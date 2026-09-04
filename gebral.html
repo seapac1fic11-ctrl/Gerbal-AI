@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gebral — adaptive algebra trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+:root{
+  --bg:#05080d; --bg-2:#0a0f17; --panel:#0d1420; --panel-2:#131c2c;
+  --border:rgba(53,225,255,.14); --border-bright:rgba(53,225,255,.38);
+  --cyan:#35e1ff; --cyan-bright:#eaffff; --cyan-dim:#1e7e95;
+  --text:#d6e4f0; --text-dim:#6b8198; --text-faint:#3d556d;
+  --wrong:#ff4d6d; --right:#35ff8b; --warn:#ffb84d;
+  --grad:linear-gradient(135deg,#35e1ff 0%,#eaffff 100%);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Space Grotesk',system-ui,sans-serif;
+  overflow-x:hidden; min-height:100vh; position:relative;
+  line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input{font-family:inherit}
+svg{display:block}
+/* Background layers */
+.bg-grid{
+  position:fixed;inset:0;z-index:-3;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(53,225,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(53,225,255,.035) 1px,transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%);
+  -webkit-mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%);
+}
+.bg-orbs{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.35;animation:drift 28s infinite ease-in-out}
+.orb.o1{width:520px;height:520px;background:#35e1ff;top:-120px;left:-80px;animation-delay:0s}
+.orb.o2{width:420px;height:420px;background:#7a4dff;bottom:-100px;right:-60px;animation-delay:-8s}
+.orb.o3{width:340px;height:340px;background:#35e1ff;top:50%;left:60%;opacity:.18;animation-delay:-14s}
+.bg-symbols{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.symbol{
+  position:absolute;color:rgba(53,225,255,.07);
+  font-family:'JetBrains Mono',monospace;font-weight:500;
+  animation:floatSym 22s infinite ease-in-out;
+  user-select:none;
+}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,30px) scale(1.08)}66%{transform:translate(-30px,20px) scale(.95)}}
+@keyframes floatSym{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-30px) rotate(8deg)}}
+/* Screens */
+.screen{
+  position:fixed;inset:0;display:none;overflow-y:auto;
+  opacity:0;transform:translateY(20px);
+  transition:opacity .5s ease,transform .5s ease;
+}
+.screen.active{display:block;opacity:1;transform:translateY(0)}
+.screen.flex{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
+.screen.flex.active{display:flex}
+.container{max-width:1080px;margin:0 auto;padding:1.5rem;width:100%}
+/* Splash */
+.splash-logo{
+  font-size:clamp(3.5rem,9vw,6.5rem);font-weight:700;letter-spacing:-.04em;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 30px rgba(53,225,255,.4));
+  animation:logoIn 1.2s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes logoIn{0%{opacity:0;transform:translateY(40px) scale(.92);letter-spacing:.2em}100%{opacity:1;transform:translateY(0) scale(1);letter-spacing:-.04em}}
+.splash-tag{
+  margin-top:1rem;font-size:1rem;color:var(--text-dim);letter-spacing:.3em;text-transform:uppercase;
+  animation:fadeUp .9s .3s ease both;
+}
+.splash-desc{
+  margin-top:2rem;max-width:560px;text-align:center;color:var(--text);font-size:1.05rem;line-height:1.7;
+  animation:fadeUp .9s .5s ease both;
+}
+.splash-cta{margin-top:2.5rem;animation:fadeUp .9s .7s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:.6rem;padding:.85rem 1.6rem;
+  border-radius:10px;font-weight:600;font-size:.95rem;letter-spacing:.02em;
+  transition:transform .2s ease,box-shadow .25s ease,background .25s ease,border-color .25s ease;
+  border:1px solid var(--border);position:relative;
+}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(0)}
+.btn-primary{
+  background:var(--grad);color:#05080d;border:none;
+  box-shadow:0 0 0 1px rgba(53,225,255,.4),0 6px 24px rgba(53,225,255,.25);
+}
+.btn-primary:hover{box-shadow:0 0 0 1px rgba(53,225,255,.6),0 10px 36px rgba(53,225,255,.4)}
+.btn-ghost{background:rgba(53,225,255,.05);color:var(--cyan);border:1px solid var(--border)}
+.btn-ghost:hover{background:rgba(53,225,255,.12);border-color:var(--border-bright);box-shadow:0 6px 20px rgba(53,225,255,.18)}
+.btn-sm{padding:.5rem .9rem;font-size:.85rem;border-radius:8px}
+.btn-icon{width:38px;height:38px;padding:0;justify-content:center;border-radius:8px}
+.btn .ico{width:18px;height:18px}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+/* Cards */
+.card{
+  background:linear-gradient(180deg,rgba(13,20,32,.85) 0%,rgba(19,28,44,.85) 100%);
+  border:1px solid var(--border);border-radius:16px;padding:1.5rem;
+  position:relative;backdrop-filter:blur(8px);
+  animation:cardIn .5s ease both;
+}
+.card::before{
+  content:'';position:absolute;inset:0;border-radius:16px;pointer-events:none;
+  box-shadow:inset 0 1px 0 rgba(53,225,255,.08);
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.card h2{
+  font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--text-dim);
+  margin-bottom:1rem;font-weight:500;
+}
+.card-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.card-title h2{margin:0}
+/* Header */
+.dash-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.2rem 1.5rem;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:rgba(5,8,13,.85);backdrop-filter:blur(10px);z-index:10;
+}
+.logo-mini{
+  font-size:1.4rem;font-weight:700;letter-spacing:-.03em;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.dash-nav{display:flex;gap:.5rem}
+/* Dashboard grid */
+.dash-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:1.2rem;margin-top:1.2rem}
+.dash-grid>.full{grid-column:1/-1}
+@media(max-width:780px){.dash-grid{grid-template-columns:1fr}}
+/* Mission rings */
+.rings-row{display:flex;justify-content:space-around;gap:1rem;flex-wrap:wrap}
+.ring-wrap{display:flex;flex-direction:column;align-items:center;gap:.6rem}
+.ring{width:130px;height:130px;transform:rotate(-90deg);position:relative}
+.ring-bg{fill:none;stroke:rgba(53,225,255,.08);stroke-width:7}
+.ring-fg{
+  fill:none;stroke:url(#cyanGrad);stroke-width:7;stroke-linecap:round;
+  transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1);
+  filter:drop-shadow(0 0 6px rgba(53,225,255,.6));
+}
+.ring-text{
+  position:absolute;top:50%;left:50%;transform:translate(50%,-50%) rotate(90deg);
+  transform-origin:center;font-family:'JetBrains Mono';font-size:1.1rem;
+  fill:var(--cyan-bright);font-weight:600;text-anchor:middle;
+}
+.ring-label{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim)}
+.ring-wrap.done .ring-fg{stroke:url(#rightGrad);filter:drop-shadow(0 0 6px rgba(53,255,139,.6))}
+/* Mission stats */
+.mission-stats{display:flex;justify-content:space-around;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border)}
+.stat{display:flex;flex-direction:column;align-items:center;gap:.2rem}
+.stat-num{font-family:'JetBrains Mono';font-size:1.4rem;color:var(--cyan-bright);font-weight:600}
+.stat-lbl{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint)}
+/* Stats card */
+.stats-card .stat-row{display:flex;justify-content:space-around;gap:1rem;margin-bottom:1.5rem}
+.big-stat{display:flex;flex-direction:column;align-items:center;gap:.3rem}
+.big-stat .ico{width:24px;height:24px;color:var(--cyan)}
+.big-num{font-family:'JetBrains Mono';font-size:2.2rem;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.big-lbl{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim)}
+.level-display{
+  display:flex;align-items:center;justify-content:center;gap:.7rem;
+  padding:1rem;background:rgba(53,225,255,.05);border-radius:10px;border:1px solid var(--border);
+}
+.level-lbl{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim)}
+.level-num{
+  font-family:'JetBrains Mono';font-size:1.6rem;font-weight:700;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.level-stage{font-size:.85rem;color:var(--cyan);font-weight:500}
+/* Skill path */
+.skill-path{position:relative;display:flex;align-items:center;justify-content:space-between;padding:1.2rem .5rem;flex-wrap:wrap;gap:.4rem}
+.skill-path::before{
+  content:'';position:absolute;top:50%;left:8%;right:8%;height:2px;
+  background:rgba(53,225,255,.12);transform:translateY(-50%);
+}
+.skill-path::after{
+  content:'';position:absolute;top:50%;left:8%;height:2px;
+  background:var(--grad);transform:translateY(-50%);transition:width 1.1s ease;
+  width:var(--path-fill,0%);
+  box-shadow:0 0 8px rgba(53,225,255,.5);
+}
+.skill-node{
+  position:relative;z-index:2;width:42px;height:42px;border-radius:50%;
+  background:var(--panel-2);border:2px solid rgba(53,225,255,.15);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono';font-size:.85rem;font-weight:600;color:var(--text-faint);
+  transition:all .3s ease;cursor:pointer;
+}
+.skill-node.unlocked{
+  background:var(--grad);color:#05080d;border-color:transparent;
+  box-shadow:0 0 0 4px rgba(53,225,255,.12),0 0 16px rgba(53,225,255,.4);
+}
+.skill-node.current{
+  animation:pulse 1.8s infinite ease-in-out;
+  background:var(--grad);color:#05080d;
+}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(53,225,255,.15),0 0 12px rgba(53,225,255,.4)}50%{box-shadow:0 0 0 8px rgba(53,225,255,.08),0 0 24px rgba(53,225,255,.7)}}
+.skill-node:hover{transform:scale(1.1)}
+.skill-node .ico{width:18px;height:18px}
+/* Topics */
+.topics-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.7rem;max-height:560px;overflow-y:auto;padding-right:.4rem}
+.topics-list::-webkit-scrollbar{width:6px}
+.topics-list::-webkit-scrollbar-track{background:transparent}
+.topics-list::-webkit-scrollbar-thumb{background:rgba(53,225,255,.2);border-radius:3px}
+.topic-row{
+  display:flex;flex-direction:column;gap:.6rem;
+  padding:.85rem;border-radius:10px;border:1px solid var(--border);
+  background:rgba(53,225,255,.03);transition:all .25s ease;
+}
+.topic-row:hover{border-color:var(--border-bright);background:rgba(53,225,255,.07)}
+.topic-row.locked{opacity:.4}
+.topic-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.topic-name{font-size:.9rem;font-weight:500;color:var(--text)}
+.topic-lvl{
+  font-family:'JetBrains Mono';font-size:.7rem;color:var(--cyan);
+  padding:.15rem .4rem;border:1px solid var(--border);border-radius:4px;
+}
+.topic-bar{
+  height:6px;border-radius:3px;background:rgba(53,225,255,.08);overflow:hidden;position:relative;
+}
+.topic-bar-fill{
+  height:100%;background:var(--grad);border-radius:3px;
+  transition:width 1s ease;box-shadow:0 0 6px rgba(53,225,255,.4);
+}
+.topic-bar-fill.mastered{background:linear-gradient(135deg,#35ff8b,#eaffff)}
+.topic-bottom{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:var(--text-dim)}
+.topic-stats{font-family:'JetBrains Mono'}
+/* Session */
+.sess-top{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(5,8,13,.85);backdrop-filter:blur(10px);z-index:10}
+.sess-back{display:flex;align-items:center;gap:.5rem;color:var(--cyan)}
+.sess-meta{display:flex;gap:1.2rem;font-family:'JetBrains Mono';font-size:.85rem;color:var(--text-dim)}
+.sess-meta span{color:var(--cyan-bright);font-weight:600}
+.sess-body{padding:2rem 1.5rem;max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:1.2rem}
+/* Lesson card */
+.lesson-card{
+  background:linear-gradient(135deg,rgba(53,225,255,.08),rgba(53,225,255,.02));
+  border:1px solid var(--border-bright);border-radius:14px;padding:1.4rem 1.5rem;
+  animation:cardIn .5s ease both;position:relative;
+}
+.lesson-tag{
+  display:inline-flex;align-items:center;gap:.4rem;
+  font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);
+  margin-bottom:.6rem;
+}
+.lesson-tag .ico{width:14px;height:14px}
+.lesson-title{font-size:1.2rem;font-weight:600;color:var(--cyan-bright);margin-bottom:.7rem}
+.lesson-body{font-size:.95rem;line-height:1.7;color:var(--text)}
+.lesson-body .katex{color:var(--cyan-bright)}
+/* Question card */
+.q-card{
+  background:linear-gradient(180deg,rgba(13,20,32,.92),rgba(19,28,44,.92));
+  border:1px solid var(--border);border-radius:16px;padding:1.8rem;
+  position:relative;animation:cardIn .4s ease both;
+}
+.q-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.q-topic{
+  font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);
+  padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;
+}
+.q-num{font-family:'JetBrains Mono';font-size:.85rem;color:var(--text-dim)}
+.q-prompt{font-size:1.6rem;font-family:'JetBrains Mono';text-align:center;padding:1.5rem 1rem;color:var(--cyan-bright);min-height:80px;display:flex;align-items:center;justify-content:center}
+.q-prompt .katex{font-size:1.7em}
+.q-input-row{display:flex;gap:.6rem;margin-top:1.2rem}
+.q-input{
+  flex:1;padding:.9rem 1rem;border-radius:10px;
+  background:rgba(5,8,13,.6);border:1px solid var(--border);
+  color:var(--cyan-bright);font-family:'JetBrains Mono';font-size:1.05rem;
+  transition:all .2s ease;
+}
+.q-input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(53,225,255,.15)}
+.q-input.wrong{border-color:var(--wrong);box-shadow:0 0 0 3px rgba(255,77,109,.18);animation:shake .4s ease}
+.q-input.right{border-color:var(--right);box-shadow:0 0 0 3px rgba(53,255,139,.18)}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.q-hint{font-size:.78rem;color:var(--text-faint);margin-top:.6rem;text-align:center}
+/* Feedback */
+.feedback{
+  margin-top:1.2rem;padding:1.2rem;border-radius:12px;
+  animation:cardIn .35s ease both;
+}
+.feedback.wrong{background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.3)}
+.feedback.right{background:rgba(53,255,139,.08);border:1px solid rgba(53,255,139,.3)}
+.feedback-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;font-weight:600;font-size:1rem}
+.feedback.right .feedback-head{color:var(--right)}
+.feedback.wrong .feedback-head{color:var(--wrong)}
+.feedback-head .ico{width:20px;height:20px}
+.feedback-body{font-size:.92rem;line-height:1.6;color:var(--text)}
+.feedback-body .katex{color:var(--cyan-bright)}
+.feedback-body strong{color:var(--cyan-bright)}
+.feedback-actions{display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap}
+.walkthrough{padding:1.2rem;margin-top:1rem;background:rgba(53,225,255,.05);border:1px solid var(--border);border-radius:10px;animation:cardIn .35s ease both}
+.walkthrough h4{font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:.8rem}
+.walkthrough-step{padding:.6rem 0;border-bottom:1px dashed rgba(53,225,255,.1);font-size:.92rem;line-height:1.6}
+.walkthrough-step:last-child{border:none}
+.walkthrough-step .step-num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--grad);color:#05080d;font-weight:700;justify-content:center;align-items:center;font-size:.78rem;margin-right:.6rem;font-family:'JetBrains Mono'}
+.walkthrough-step .katex{color:var(--cyan-bright)}
+/* Placement */
+.place-top{padding:1.2rem 1.5rem;border-bottom:1px solid var(--border);text-align:center}
+.place-title{font-size:1.4rem;font-weight:600;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.place-sub{font-size:.85rem;color:var(--text-dim);margin-top:.3rem}
+.place-progress{height:4px;background:rgba(53,225,255,.08);border-radius:2px;margin-top:1rem;overflow:hidden}
+.place-progress-fill{height:100%;background:var(--grad);width:0%;transition:width .5s ease;box-shadow:0 0 6px rgba(53,225,255,.5)}
+.place-meta{font-family:'JetBrains Mono';font-size:.78rem;color:var(--text-dim);margin-top:.6rem}
+.place-meta span{color:var(--cyan)}
+/* Gauge */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:1.5rem;padding:2rem 1rem}
+.gauge{width:280px;height:280px;position:relative}
+.gauge-arc{fill:none;stroke:rgba(53,225,255,.08);stroke-width:14;stroke-linecap:round}
+.gauge-fill{fill:none;stroke:url(#cyanGrad);stroke-width:14;stroke-linecap:round;stroke-dasharray:440;stroke-dashoffset:440;transition:stroke-dashoffset 1.6s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 0 12px rgba(53,225,255,.6))}
+.gauge-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.gauge-num{font-family:'JetBrains Mono';font-size:4rem;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+.gauge-max{font-size:.85rem;color:var(--text-dim);font-family:'JetBrains Mono'}
+.gauge-stage{font-size:1.6rem;font-weight:600;color:var(--cyan-bright);margin-top:.5rem;letter-spacing:.04em}
+.gauge-stage-desc{font-size:.9rem;color:var(--text-dim);margin-top:.3rem;text-align:center;max-width:380px}
+.gauge-actions{margin-top:1.5rem;display:flex;gap:1rem}
+/* Celebration modal */
+.modal{position:fixed;inset:0;background:rgba(5,8,13,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:100;animation:fadeIn .4s ease}
+.modal.active{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.celebrate-box{
+  background:linear-gradient(180deg,rgba(19,28,44,.95),rgba(13,20,32,.95));
+  border:1px solid var(--border-bright);border-radius:20px;padding:2.5rem 2rem;
+  max-width:440px;text-align:center;animation:popIn .5s cubic-bezier(.2,.8,.2,1) both;
+  box-shadow:0 30px 80px rgba(53,225,255,.2);
+}
+@keyframes popIn{from{opacity:0;transform:scale(.85) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.celebrate-icon{width:80px;height:80px;color:var(--cyan);margin:0 auto 1rem;animation:trophyBounce 1.4s infinite ease-in-out}
+@keyframes trophyBounce{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+.celebrate-title{font-size:2rem;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.5rem}
+.celebrate-body{color:var(--text);font-size:1rem;line-height:1.6;margin-bottom:1.5rem}
+.celebrate-stats{display:flex;justify-content:space-around;margin:1.2rem 0;padding:1rem;background:rgba(53,225,255,.05);border-radius:10px;border:1px solid var(--border)}
+.celebrate-stat{display:flex;flex-direction:column;gap:.2rem}
+.celebrate-stat-num{font-family:'JetBrains Mono';font-size:1.4rem;color:var(--cyan-bright);font-weight:600}
+.celebrate-stat-lbl{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--text-dim)}
+/* Toast */
+.toast-wrap{position:fixed;bottom:1.5rem;right:1.5rem;display:flex;flex-direction:column;gap:.6rem;z-index:200;pointer-events:none}
+.toast{
+  padding:.85rem 1.2rem;border-radius:10px;
+  background:rgba(19,28,44,.95);border:1px solid var(--border-bright);
+  color:var(--cyan-bright);font-size:.88rem;backdrop-filter:blur(10px);
+  animation:toastIn .4s cubic-bezier(.2,.8,.2,1) both,toastOut .4s 2.6s ease forwards;
+  box-shadow:0 10px 30px rgba(0,0,0,.4),0 0 0 1px rgba(53,225,255,.2);
+}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateX(40px)}}
+/* Particles canvas */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:50}
+/* Misc */
+.flash-correct{animation:flashRight .6s ease}
+.flash-wrong{animation:flashWrong .6s ease}
+@keyframes flashRight{0%,100%{background:rgba(53,255,139,0)}50%{background:rgba(53,255,139,.06)}}
+@keyframes flashWrong{0%,100%{background:rgba(255,77,109,0)}50%{background:rgba(255,77,109,.06)}}
+.center-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center}
+.hidden{display:none!important}
+.splash-math{font-family:'JetBrains Mono';color:rgba(53,225,255,.35);font-size:1.2rem;margin-top:1.5rem;animation:fadeUp .9s .9s ease both}
+.splash-math span{margin:0 .3rem;animation:floatSym 6s infinite ease-in-out}
+.splash-math span:nth-child(2){animation-delay:.5s}
+.splash-math span:nth-child(3){animation-delay:1s}
+.splash-math span:nth-child(4){animation-delay:1.5s}
+.splash-math span:nth-child(5){animation-delay:2s}
+.topic-group{grid-column:1/-1;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-top:1rem;padding-bottom:.4rem;border-bottom:1px solid var(--border)}
+.topic-group:first-of-type{margin-top:0}
+.sess-result{padding:2rem 1rem;text-align:center}
+.sess-result h2{font-size:1.6rem;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.5rem}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .orb,.symbol{animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-orbs"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
+<div class="bg-symbols" id="symbols"></div>
+<canvas id="particles"></canvas>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="cyanGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#35e1ff"/>
+      <stop offset="100%" stop-color="#eaffff"/>
+    </linearGradient>
+    <linearGradient id="rightGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#35ff8b"/>
+      <stop offset="100%" stop-color="#eaffff"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- SPLASH -->
+<section id="splash" class="screen flex active">
+  <div class="splash-logo">gebral</div>
+  <div class="splash-tag">Adaptive Algebra Trainer</div>
+  <p class="splash-desc">A focused daily trainer that meets you where you are. Take a short placement test, then drill the topics you need — from integer operations all the way to factoring quadratics — until they're automatic.</p>
+  <div class="splash-math">
+    <span>\pi</span><span>\sum</span><span>\sqrt{x}</span><span>x^2</span><span>\infty</span>
+  </div>
+  <div class="splash-cta">
+    <button class="btn btn-primary" id="btn-begin">Begin Placement Test</button>
+  </div>
+</section>
+
+<!-- PLACEMENT -->
+<section id="placement" class="screen">
+  <div class="place-top">
+    <div class="place-title">Placement Test</div>
+    <div class="place-sub">Answer 30 questions — difficulty adapts to your responses</div>
+    <div class="place-progress"><div class="place-progress-fill" id="place-fill"></div></div>
+    <div class="place-meta">Question <span id="place-q">1</span> / 30 &nbsp;·&nbsp; Level <span id="place-lvl">3</span></div>
+  </div>
+  <div class="sess-body" id="place-body"></div>
+</section>
+
+<!-- GAUGE (post-placement) -->
+<section id="gauge-screen" class="screen flex">
+  <div class="gauge-wrap">
+    <div class="gauge">
+      <svg viewBox="0 0 160 160" style="width:100%;height:100%;transform:rotate(135deg)">
+        <circle class="gauge-arc" cx="80" cy="80" r="70" stroke-dasharray="330 440"/>
+        <circle class="gauge-fill" id="gauge-fill" cx="80" cy="80" r="70" stroke-dasharray="330 440"/>
+      </svg>
+      <div class="gauge-center">
+        <div class="gauge-num" id="gauge-num">0</div>
+        <div class="gauge-max">/ 10</div>
+      </div>
+    </div>
+    <div class="gauge-stage" id="gauge-stage">—</div>
+    <div class="gauge-stage-desc" id="gauge-desc">—</div>
+    <div class="gauge-actions">
+      <button class="btn btn-primary" id="btn-enter-dash">Enter Dashboard</button>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard" class="screen">
+  <header class="dash-header">
+    <div class="logo-mini">gebral</div>
+    <nav class="dash-nav">
+      <button class="btn btn-ghost btn-sm" id="btn-retest">Re-test</button>
+      <button class="btn btn-ghost btn-sm" id="btn-reset">Reset All</button>
+    </nav>
+  </header>
+  <div class="container">
+    <div class="dash-grid">
+      <div class="card mission-card">
+        <h2>Today's Mission</h2>
+        <div class="rings-row">
+          <div class="ring-wrap" id="ring-time-wrap">
+            <svg class="ring" viewBox="0 0 100 100">
+              <circle class="ring-bg" cx="50" cy="50" r="42"/>
+              <circle class="ring-fg" cx="50" cy="50" r="42" stroke-dasharray="263.89" stroke-dashoffset="263.89" data-ring="time"/>
+              <text class="ring-text" x="50" y="50" data-ring-text="time">0m</text>
+            </svg>
+            <div class="ring-label">Time</div>
+          </div>
+          <div class="ring-wrap" id="ring-correct-wrap">
+            <svg class="ring" viewBox="0 0 100 100">
+              <circle class="ring-bg" cx="50" cy="50" r="42"/>
+              <circle class="ring-fg" cx="50" cy="50" r="42" stroke-dasharray="263.89" stroke-dashoffset="263.89" data-ring="correct"/>
+              <text class="ring-text" x="50" y="50" data-ring-text="correct">0</text>
+            </svg>
+            <div class="ring-label">Correct</div>
+          </div>
+          <div class="ring-wrap" id="ring-acc-wrap">
+            <svg class="ring" viewBox="0 0 100 100">
+              <circle class="ring-bg" cx="50" cy="50" r="42"/>
+              <circle class="ring-fg" cx="50" cy="50" r="42" stroke-dasharray="263.89" stroke-dashoffset="263.89" data-ring="accuracy"/>
+              <text class="ring-text" x="50" y="50" data-ring-text="accuracy">0%</text>
+            </svg>
+            <div class="ring-label">Accuracy</div>
+          </div>
+        </div>
+        <div class="mission-stats">
+          <div class="stat"><span class="stat-num" id="stat-time">0</span><span class="stat-lbl">minutes</span></div>
+          <div class="stat"><span class="stat-num" id="stat-correct">0</span><span class="stat-lbl">correct</span></div>
+          <div class="stat"><span class="stat-num" id="stat-accuracy">0%</span><span class="stat-lbl">accuracy</span></div>
+        </div>
+      </div>
+      <div class="card stats-card">
+        <h2>Progress</h2>
+        <div class="stat-row">
+          <div class="big-stat">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c2 4 4 5 4 9a4 4 0 11-8 0c0-2 1-3 2-4-1 2 0 3 2 3-2-4 0-6 0-8z"/></svg>
+            <span class="big-num" id="stat-streak">0</span>
+            <span class="big-lbl">day streak</span>
+          </div>
+          <div class="big-stat">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v4a6 6 0 01-12 0V4z"/><path d="M6 6H3a3 3 0 003 4M18 6h3a3 3 0 01-3 4M9 16h6M8 20h8M12 14v6"/></svg>
+            <span class="big-num" id="stat-total">0</span>
+            <span class="big-lbl">total solved</span>
+          </div>
+        </div>
+        <div class="level-display">
+          <span class="level-lbl">Level</span>
+          <span class="level-num" id="stat-level">1</span>
+          <span class="level-stage" id="stat-stage">Initiate</span>
+        </div>
+      </div>
+      <div class="card full skill-path-card">
+        <h2>Skill Path</h2>
+        <div class="skill-path" id="skill-path"></div>
+      </div>
+      <div class="card full topics-card">
+        <h2>Topics — drill any to raise mastery</h2>
+        <div class="topics-list" id="topics-list"></div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:1.5rem">
+      <button class="btn btn-primary" id="btn-start-session" style="font-size:1.05rem;padding:1rem 2rem">Start Daily Session</button>
+    </div>
+  </div>
+</section>
+
+<!-- SESSION -->
+<section id="session" class="screen">
+  <header class="sess-top">
+    <button class="btn btn-ghost btn-sm sess-back" id="btn-exit-session">← Exit Session</button>
+    <div class="sess-meta">
+      <div>Time: <span id="sess-time">0m</span></div>
+      <div>Correct: <span id="sess-correct">0</span>/30</div>
+      <div>Streak: <span id="sess-streak">0</span></div>
+    </div>
+  </header>
+  <div class="sess-body" id="sess-body"></div>
+</section>
+
+<!-- CELEBRATION -->
+<div class="modal" id="celebration">
+  <div class="celebrate-box">
+    <svg class="celebrate-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v4a6 6 0 01-12 0V4z"/><path d="M6 6H3a3 3 0 003 4M18 6h3a3 3 0 01-3 4M9 16h6M8 20h8M12 14v6"/></svg>
+    <div class="celebrate-title" id="cel-title">Mission Complete</div>
+    <div class="celebrate-body" id="cel-body">You hit 30 minutes and 30 correct answers. Streak saved.</div>
+    <div class="celebrate-stats">
+      <div class="celebrate-stat"><span class="celebrate-stat-num" id="cel-time">0</span><span class="celebrate-stat-lbl">minutes</span></div>
+      <div class="celebrate-stat"><span class="celebrate-stat-num" id="cel-correct">0</span><span class="celebrate-stat-lbl">correct</span></div>
+      <div class="celebrate-stat"><span class="celebrate-stat-num" id="cel-streak">0</span><span class="celebrate-stat-lbl">streak</span></div>
+    </div>
+    <button class="btn btn-primary" id="btn-cel-close">Back to Dashboard</button>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+/* ============================================================
+   GEBRAL — adaptive algebra trainer
+   Single-file vanilla JS app. All math rendered with KaTeX.
+   ============================================================ */
+/* ---------- Helpers ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const randF = (a, b) => Math.random() * (b - a) + a;
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a || 1; };
+const lcm = (a, b) => Math.abs(a * b) / gcd(a, b);
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+const todayKey = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+const reduce = (n, d) => { const g = gcd(n, d); return [n / g, d / g]; };
+const fmt = (n) => (n >= 0 ? '+ ' + n : '- ' + Math.abs(n));
+
+/* ---------- KaTeX rendering ---------- */
+function tex(str) {
+  if (!str || str.indexOf('$') === -1) return str || '';
+  return str.replace(/\$\$([^$]+)\$\$/g, (m, e) => {
+    try { return katex.renderToString(e, { throwOnError: false, displayMode: true }); } catch (x) { return m; }
+  }).replace(/\$([^$]+)\$/g, (m, e) => {
+    try { return katex.renderToString(e, { throwOnError: false, displayMode: false }); } catch (x) { return m; }
+  });
+}
+function renderMathIn(node) { if (!node) return; node.innerHTML = tex(node.innerHTML); }
+
+/* ---------- Icons (inline SVG) ---------- */
+const ICO = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M6 18L18 6"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>',
+  flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c2 4 4 5 4 9a4 4 0 11-8 0c0-2 1-3 2-4-1 2 0 3 2 3-2-4 0-6 0-8z"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12a2 2 0 012 2v14H6a2 2 0 01-2-2V4z"/><path d="M4 18h14"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12c1 1 1 2 1 3h6c0-1 0-2 1-3a7 7 0 00-4-12z"/></svg>',
+  zap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/></svg>',
+  sigma: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5H6l6 7-6 7h12"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v4a6 6 0 01-12 0V4z"/><path d="M6 6H3a3 3 0 003 4M18 6h3a3 3 0 01-3 4M9 16h6M8 20h8M12 14v6"/></svg>',
+  redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9M3 12l3-3M3 12l3 3"/></svg>',
+  target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M6 18L18 6"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>'
+};
+
+/* ---------- Answer checkers ---------- */
+const CHECKERS = {
+  numeric: (u, a, p) => {
+    const n = parseFloat(String(u).replace(/\s+/g, ''));
+    if (isNaN(n)) return false;
+    return Math.abs(n - a) < 0.02;
+  },
+  integer: (u, a, p) => {
+    const m = String(u).trim().match(/-?\d+/);
+    if (!m) return false;
+    return parseInt(m[0], 10) === a;
+  },
+  fraction: (u, a, p) => {
+    const m = String(u).trim().match(/(-?\d+)\s*\/\s*(-?\d+)/);
+    if (!m) return false;
+    const un = parseInt(m[1], 10), ud = parseInt(m[2], 10);
+    if (ud === 0) return false;
+    const [an, ad] = (typeof a === 'string' ? a : String(a)).split('/').map(Number);
+    const [rn, rd] = reduce(un, ud);
+    const [ran, rad] = reduce(an, ad);
+    return rn === ran && rd === rad;
+  },
+  text: (u, a, p) => String(u).trim().toLowerCase() === String(a).trim().toLowerCase(),
+  expression: (u, a, p) => {
+    const norm = (s) => {
+      s = String(s).toLowerCase().replace(/\s+/g, '').replace(/[–−]/g, '-').replace(/×/g, '*').replace(/\*/g, '');
+      // Split into signed terms on +/- (not at start, not after operators or 'e' for sci notation)
+      const terms = [];
+      let buf = '';
+      for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if ((c === '+' || c === '-') && i > 0 && !'+-*/^('.includes(s[i - 1]) && s[i - 1] !== 'e') {
+          if (buf) terms.push(buf);
+          buf = (c === '+' ? '' : '-');
+        } else { buf += c; }
+      }
+      if (buf) terms.push(buf);
+      const normT = (t) => {
+        if (/^-?\d+(?:\.\d+)?$/.test(t)) return t + '|';
+        let m = t.match(/^(-?\d+(?:\.\d+)?)([a-z]+)$/);
+        if (m) return m[1] + '|' + m[2].split('').sort().join('');
+        m = t.match(/^(-?)([a-z]+)$/);
+        if (m) return (m[1] === '-' ? '-1' : '1') + '|' + m[2].split('').sort().join('');
+        return t;
+      };
+      return terms.map(normT).sort().join(',');
+    };
+    return norm(u) === norm(a);
+  }
+};
+/* ---------- Topic Registry ---------- */
+/* Each topic: { id, name, level, gen(), lesson{title, body}, diagnose(p, u) } */
+const TOPICS = [
+/* === LEVEL 1: Integer operations === */
+{ id:'int_add', name:'Integer Addition', level:1,
+  gen:()=>{ const a=rand(-15,15), b=rand(-15,15); return { a,b, prompt:'$'+a+' + ('+b+')$', answer:a+b, type:'numeric' }; },
+  lesson:{ title:'Adding Integers', body:'When signs match, add absolute values and keep the sign: $-5+(-3)=-8$. When signs differ, subtract the smaller abs from the larger and keep the larger sign: $-5+8=3$.' },
+  diagnose:(p,u)=> u===p.a-p.b ? 'You subtracted instead of adding. The problem asked for $'+p.a+'+('+p.b+')$.' : (u===-(p.a+p.b) ? 'You flipped the result sign. Count negatives carefully.' : 'Same sign: add abs values, keep sign. Different signs: subtract smaller abs from larger, keep larger sign.')
+},
+{ id:'int_sub', name:'Integer Subtraction', level:1,
+  gen:()=>{ const a=rand(-15,15), b=rand(-15,15); return { a,b, prompt:'$'+a+' - ('+b+')$', answer:a-b, type:'numeric' }; },
+  lesson:{ title:'Subtracting Integers', body:'Subtracting is adding the opposite: $a - b = a + (-b)$. So $7 - (-3) = 7 + 3 = 10$ and $-4 - 6 = -4 + (-6) = -10$.' },
+  diagnose:(p,u)=> u===p.a+p.b ? 'You treated subtraction as addition. Rewrite $a-b$ as $a+(-b)$ first.' : (u===-(p.a-p.b) ? 'Sign flipped on the result.' : 'Convert subtraction to adding the opposite of the second number.')
+},
+{ id:'int_mul', name:'Integer Multiplication', level:1,
+  gen:()=>{ let a=rand(-9,9), b=rand(-9,9); if(a===0)a=2; if(b===0)b=3; return { a,b, prompt:'$('+a+')('+b+')$', answer:a*b, type:'numeric' }; },
+  lesson:{ title:'Multiplying Integers', body:'Multiply absolute values. Even number of negatives → positive. Odd number of negatives → negative. $(-4)(-3)=12$, $(-4)(3)=-12$.' },
+  diagnose:(p,u)=> u===Math.abs(p.a*p.b) ? 'You dropped the sign. Count negatives: even = positive, odd = negative.' : 'Multiply the absolute values, then assign sign based on count of negatives (even = +, odd = -).'
+},
+{ id:'int_div', name:'Integer Division', level:1,
+  gen:()=>{ const b=rand(2,9)*(Math.random()<.5?-1:1); let q=rand(-9,9); if(q===0)q=2; const a=b*q; return { a,b,q, prompt:'$'+a+' \\div ('+b+')$', answer:q, type:'numeric' }; },
+  lesson:{ title:'Dividing Integers', body:'Divide absolute values. Same sign → positive. Different signs → negative. $-24 \\div (-6) = 4$, $-24 \\div 6 = -4$.' },
+  diagnose:(p,u)=> u===Math.abs(p.q) ? 'You dropped the sign. Same signs give positive; different signs give negative.' : 'Divide abs values, then assign sign: same signs = +, different signs = -).'
+},
+{ id:'abs_val', name:'Absolute Value', level:1,
+  gen:()=>{ let a=rand(-20,20); if(a===0)a=-5; return { a, prompt:'$|'+a+'|$', answer:Math.abs(a), type:'numeric' }; },
+  lesson:{ title:'Absolute Value', body:'Absolute value is distance from zero, always non-negative. $|-7| = 7$, $|7| = 7$, $|0| = 0$. The bars turn negatives into positives but leave positives alone.' },
+  diagnose:(p,u)=> u===p.a ? 'You returned the original number. Absolute value is the distance from zero — always non-negative.' : 'Take the number\'s distance from zero: $|x| = x$ if $x \\geq 0$, $|x| = -x$ if $x < 0$.'
+},
+
+/* === LEVEL 2: Arithmetic & fractions === */
+{ id:'order_ops', name:'Order of Operations', level:2,
+  gen:()=>{ const a=rand(2,8), b=rand(2,8), c=rand(2,6), d=rand(1,5); return { a,b,c,d, prompt:'$'+a+' + '+b+' \\cdot '+c+' - '+d+'$', answer:a+b*c-d, type:'numeric' }; },
+  lesson:{ title:'PEMDAS', body:'Evaluate in order: **P**arentheses, **E**xponents, **M**ultiplication/**D**ivision (left to right), **A**ddition/**S**ubtraction (left to right). For $3 + 4 \\cdot 2$, compute $4 \\cdot 2 = 8$ first, then $3 + 8 = 11$.' },
+  diagnose:(p,u)=> u===(p.a+p.b)*p.c-p.d ? 'You multiplied after adding. Multiplication must come before addition.' : (u===p.a+p.b*p.c+p.d ? 'You added the last term instead of subtracting. Watch the minus sign.' : 'Follow PEMDAS strictly: parentheses → exponents → multiply/divide → add/subtract.')
+},
+{ id:'frac_simp', name:'Simplify Fractions', level:2,
+  gen:()=>{ const f=rand(2,6), dn=rand(2,7), dn2=dn*f, num=rand(1,dn-1)*f, g=gcd(num,dn2); return { num, den:dn2, sN:num/g, sD:dn2/g, prompt:'$\\frac{'+num+'}{'+dn2+'}$', answer:(num/g)+'/'+(dn2/g), type:'fraction' }; },
+  lesson:{ title:'Simplifying Fractions', body:'Divide numerator and denominator by their GCF. For $\\frac{6}{9}$, the GCF is 3, so $\\frac{6 \\div 3}{9 \\div 3} = \\frac{2}{3}$. A fraction is fully simplified when GCF(top, bottom) = 1.' },
+  diagnose:(p,u)=> u===(p.num+'/'+p.den) ? 'You didn\'t simplify. Find the GCF of numerator and denominator, then divide both.' : 'Find the greatest common factor of numerator and denominator, then divide both by it.'
+},
+{ id:'frac_add', name:'Add Fractions', level:2,
+  gen:()=>{ const d1=rand(2,8), d2=rand(2,8), n1=rand(1,d1-1), n2=rand(1,d2-1), cd=lcm(d1,d2), sn=n1*(cd/d1)+n2*(cd/d2), g=gcd(sn,cd); return { n1,d1,n2,d2,cd, prompt:'$\\frac{'+n1+'}{'+d1+'} + \\frac{'+n2+'}{'+d2+'}$', answer:(sn/g)+'/'+(cd/g), type:'fraction' }; },
+  lesson:{ title:'Adding Fractions', body:'Find a common denominator (the LCM works). Rewrite each fraction, add numerators, keep the denominator, then simplify. $\\frac{1}{4} + \\frac{1}{6} = \\frac{3}{12} + \\frac{2}{12} = \\frac{5}{12}$.' },
+  diagnose:(p,u)=> { const m=String(u).match(/(\d+)\/(\d+)/); if(m && +m[1]===p.n1+p.n2 && +m[2]===p.d1+p.d2) return 'You added denominators. Keep the common denominator the same; only add numerators.'; return 'Find a common denominator first, then add numerators only.'; }
+},
+{ id:'frac_mul', name:'Multiply Fractions', level:2,
+  gen:()=>{ const d1=rand(2,8), d2=rand(2,8), n1=rand(1,d1-1), n2=rand(1,d2-1), num=n1*n2, den=d1*d2, g=gcd(num,den); return { n1,d1,n2,d2, prompt:'$\\frac{'+n1+'}{'+d1+'} \\cdot \\frac{'+n2+'}{'+d2+'}$', answer:(num/g)+'/'+(den/g), type:'fraction' }; },
+  lesson:{ title:'Multiplying Fractions', body:'Multiply numerators, multiply denominators, then simplify. $\\frac{2}{3} \\cdot \\frac{4}{5} = \\frac{8}{15}$. You can also cross-simplify before multiplying.' },
+  diagnose:(p,u)=> { const m=String(u).match(/(\d+)\/(\d+)/); if(m && +m[1]===p.n1*p.n2 && +m[2]===p.d1*p.d2) return 'You didn\'t simplify. Reduce the result by the GCF of numerator and denominator.'; return 'Multiply tops, multiply bottoms, then simplify by dividing both by their GCF.'; }
+},
+{ id:'decimal_ops', name:'Decimal Operations', level:2,
+  gen:()=>{ const op=pick(['+','-']); let a=rand(100,9999)/100, b=rand(100,9999)/100; if(op==='-'&&b>a){const t=a;a=b;b=t;} const ans=op==='+'?a+b:a-b; return { a,b,op, prompt:'$'+a+' '+op+' '+b+'$', answer:Math.round(ans*100)/100, type:'numeric' }; },
+  lesson:{ title:'Decimal Arithmetic', body:'Line up the decimal points for add/subtract. For multiply, count total decimal places in the factors and put that many in the product. Always estimate first to catch place-value errors.' },
+  diagnose:(p,u)=> Math.abs(u-(p.a+p.b))<.01 || Math.abs(u-(p.a-p.b))<.01 ? 'You may have used the wrong operation or dropped a sign. Re-check whether it is plus or minus.' : 'Line up decimal points for add/subtract. Carry place values carefully.'
+},
+
+/* === LEVEL 3: Applications === */
+{ id:'percent_of', name:'Percent of a Number', level:3,
+  gen:()=>{ const p=rand(5,95), n=rand(20,200), ans=Math.round((p*n/100)*100)/100; return { p,n, prompt:'$'+p+'\\%$ of $'+n+'$', answer:ans, type:'numeric' }; },
+  lesson:{ title:'Percent of a Number', body:'Convert the percent to a decimal, then multiply. $25\\% \\text{ of } 80 = 0.25 \\cdot 80 = 20$. Or: $\\frac{p}{100} \\cdot n$.' },
+  diagnose:(p,u)=> Math.abs(u-p.n)>.01 && Math.abs(u-p.p)>.01 ? 'Translate to $\\frac{p}{100} \\cdot n$. Convert the percent to a decimal, then multiply.' : 'You returned one of the inputs. Multiply the percent (as decimal) by the number.'
+},
+{ id:'percent_change', name:'Percent Change', level:3,
+  gen:()=>{ const o=rand(20,100); let d=rand(-30,50); if(d===0)d=5; const nv=o+d, pct=Math.round((d/o)*1000)/10; return { o, nv, d, prompt:'Percent change from $'+o+'$ to $'+nv+'$?', answer:pct, type:'numeric' }; },
+  lesson:{ title:'Percent Change', body:'Percent change = $\\frac{\\text{new} - \\text{old}}{\\text{old}} \\cdot 100\\%$. A drop is negative; a rise is positive. From $50$ to $40$: $\\frac{40-50}{50} \\cdot 100 = -20\\%$.' },
+  diagnose:(p,u)=> Math.abs(u-(p.nv-p.o))<.1 ? 'You computed the difference, not the percent. Divide by the original value and multiply by 100.' : 'Use $\\frac{\\text{new} - \\text{old}}{\\text{old}} \\cdot 100$. Negative = decrease, positive = increase.'
+},
+{ id:'gcf', name:'Greatest Common Factor', level:3,
+  gen:()=>{ const a=rand(12,60), b=rand(12,60); return { a,b, prompt:'$\\text{GCF}('+a+', '+b+')$', answer:gcd(a,b), type:'numeric' }; },
+  lesson:{ title:'GCF', body:'The GCF is the largest number that divides both. List prime factors and take the smallest power of each shared prime. For $12 = 2^2 \\cdot 3$ and $18 = 2 \\cdot 3^2$, GCF $= 2 \\cdot 3 = 6$.' },
+  diagnose:(p,u)=> u===p.a*p.b ? 'You multiplied instead of finding a common factor. GCF must divide both numbers.' : 'Find the largest integer that divides both numbers evenly.'
+},
+{ id:'lcm', name:'Least Common Multiple', level:3,
+  gen:()=>{ let a=rand(4,15), b=rand(4,15); if(a===b)b=a+1; return { a,b, prompt:'$\\text{LCM}('+a+', '+b+')$', answer:lcm(a,b), type:'numeric' }; },
+  lesson:{ title:'LCM', body:'The LCM is the smallest number both divide into. Take the highest power of each prime that appears. For $4 = 2^2$ and $6 = 2 \\cdot 3$, LCM $= 2^2 \\cdot 3 = 12$.' },
+  diagnose:(p,u)=> u===p.a*b ? 'You multiplied by the wrong factor. The LCM must be divisible by both numbers.' : 'Find the smallest number that is divisible by both. Use the highest power of each prime.'
+},
+{ id:'ratios', name:'Equivalent Ratios', level:3,
+  gen:()=>{ const a=rand(2,8), b=rand(2,8), k=rand(2,6); if(Math.random()<.5){ return { a,b,k, mode:'?', prompt:'$'+a+':'+b+' = ?:'+(b*k)+'$', answer:a*k, type:'numeric' }; } else { return { a,b,k, mode:'?', prompt:'$'+a+':'+b+' = '+(a*k)+':?$', answer:b*k, type:'numeric' }; } },
+  lesson:{ title:'Equivalent Ratios', body:'Multiply (or divide) both parts of a ratio by the same number. $3:4 = 6:8 = 9:12$. To find a missing value, identify the multiplier between known parts and apply it to the other side.' },
+  diagnose:(p,u)=> { if(p.prompt.indexOf('?')<p.prompt.indexOf('=')) return 'You may have swapped the sides. Identify the multiplier on the side with both numbers and apply it to the other side.'; return 'Find what was multiplied on one side, then multiply the matching part by the same value.'; }
+},
+{ id:'exp_basic', name:'Basic Exponents', level:3,
+  gen:()=>{ const base=rand(2,9), exp=rand(2,4); return { base, exp, prompt:'$'+base+'^{'+exp+'}$', answer:Math.pow(base,exp), type:'numeric' }; },
+  lesson:{ title:'Exponents', body:'$b^n$ means $b$ multiplied by itself $n$ times. $2^3 = 2 \\cdot 2 \\cdot 2 = 8$. The base is the number being repeated; the exponent is the count.' },
+  diagnose:(p,u)=> u===p.base*p.exp ? 'You multiplied the base by the exponent. Instead, multiply the base by itself exponent-many times.' : (u===Math.pow(p.base,2)*p.exp ? 'You missed one factor. Count how many times to multiply the base by itself.' : 'Multiply the base by itself exponent-many times: $b^n = b \\cdot b \\cdots b$ (n times).')
+},
+/* === LEVEL 4: Roots, geometry, scientific notation === */
+{ id:'sqrt', name:'Square Roots', level:4,
+  gen:()=>{ const n=pick([4,9,16,25,36,49,64,81,100,121,144,169,196,225]); return { n, prompt:'$\\sqrt{'+n+'}$', answer:Math.sqrt(n), type:'numeric' }; },
+  lesson:{ title:'Square Roots', body:'The square root of $n$ is the positive number that squares to $n$. $\\sqrt{36} = 6$ because $6^2 = 36$. For non-perfect squares, estimate or simplify radicals.' },
+  diagnose:(p,u)=> u===p.n*n ? 'You squared instead of taking the root. $\\sqrt{n}$ asks what number times itself equals $n$.' : 'Find the non-negative number whose square equals $n$.'
+},
+{ id:'coord_plane', name:'Coordinate Plane', level:4,
+  gen:()=>{ let x=rand(-9,9), y=rand(-9,9); if(x===0)x=3; if(y===0)y=4; const q=(x>0&&y>0)?'I':(x<0&&y>0)?'II':(x<0&&y<0)?'III':'IV'; return { x,y, prompt:'Which quadrant contains $('+x+', '+y+')$? (I, II, III, or IV)', answer:q, type:'text' }; },
+  lesson:{ title:'Quadrants', body:'Quadrant I: $x>0, y>0$ (upper right). II: $x<0, y>0$ (upper left). III: $x<0, y<0$ (lower left). IV: $x>0, y<0$ (lower right). Points on axes are not in any quadrant.' },
+  diagnose:(p,u)=> 'Signs of $x$ and $y$ decide the quadrant. I: (+,+), II: (-,+), III: (-,-), IV: (+,-).'
+},
+{ id:'pythagorean', name:'Pythagorean Theorem', level:4,
+  gen:()=>{ const t=pick([[3,4,5],[5,12,13],[6,8,10],[8,15,17],[7,24,25],[9,12,15],[10,24,26]]); const [a,b,c]=t; return { a,b,c, prompt:'A right triangle has legs $'+a+'$ and $'+b+'$. Find the hypotenuse.', answer:c, type:'numeric' }; },
+  lesson:{ title:'Pythagorean Theorem', body:'For a right triangle with legs $a, b$ and hypotenuse $c$: $a^2 + b^2 = c^2$. Solve for the missing side. $3^2 + 4^2 = 9 + 16 = 25 = 5^2$, so $c = 5$.' },
+  diagnose:(p,u)=> u===Math.round(Math.sqrt(p.a*p.a+p.b*p.b)) ? 'You found the right value; check rounding or sign.' : (u===p.a+p.b ? 'You added legs. The formula uses $a^2+b^2=c^2$, not $a+b=c$.' : 'Square each leg, add, then take the square root to find the hypotenuse.')
+},
+{ id:'sci_notation', name:'Scientific Notation', level:4,
+  gen:()=>{ const a=rand(1,9), dec=rand(0,9), b=rand(3,6); const mant=a+dec/10; const N=mant*Math.pow(10,b); return { mant, b, N, prompt:'Express $'+N+'$ in scientific notation (as $a \\times 10^b$, enter like 3.5*10^4)', answer:mant+'*10^'+b, type:'text' }; },
+  lesson:{ title:'Scientific Notation', body:'Write $N = a \\times 10^b$ where $1 \\leq a < 10$ and $b$ is an integer. Move the decimal until one non-zero digit is to its left; the count of moves is $b$.' },
+  diagnose:(p,u)=> 'Move the decimal in $'+p.N+'$ until one non-zero digit sits in front. The number of moves is the exponent $b='+p.b+'$.'
+},
+
+/* === LEVEL 5: Basic equations === */
+{ id:'one_step', name:'One-Step Equations', level:5,
+  gen:()=>{ const op=pick(['+','-','*','/']); let a,b,c,x,prompt; if(op==='+'){ b=rand(-20,20); x=rand(-20,20); a=x+b; prompt='$x + '+b+' = '+a+'$'; } else if(op==='-'){ b=rand(-20,20); x=rand(-20,20); a=x-b; prompt='$x - '+b+' = '+a+'$'; } else if(op==='*'){ a=rand(2,9); x=rand(-9,9); c=a*x; prompt='$'+a+'x = '+c+'$'; } else { a=rand(2,9); x=rand(-9,9); c=a*x; prompt='$\\frac{x}{'+a+'} = '+x+'$'; return { a,x,c, prompt, answer:x, type:'numeric' }; } return { op,a,b,c,x, prompt, answer:x, type:'numeric' }; },
+  lesson:{ title:'One-Step Equations', body:'Isolate $x$ by doing the opposite operation to both sides. $x + 5 = 12 \\Rightarrow x = 12 - 5 = 7$. $3x = 18 \\Rightarrow x = 18/3 = 6$. Whatever you do to one side, do to the other.' },
+  diagnose:(p,u)=> 'Reverse the operation on both sides. Add ↔ subtract; multiply ↔ divide.'
+},
+{ id:'two_step', name:'Two-Step Equations', level:5,
+  gen:()=>{ const a=rand(2,9)*(Math.random()<.3?-1:1), b=rand(-15,15), x=rand(-9,9), c=a*x+b; return { a,b,c,x, prompt:'$'+a+'x + '+b+' = '+c+'$', answer:x, type:'numeric' }; },
+  lesson:{ title:'Two-Step Equations', body:'First undo the addition/subtraction, then undo the multiplication. For $3x + 4 = 19$: subtract 4 → $3x = 15$, divide by 3 → $x = 5$. Order matters: constants first, coefficient last.' },
+  diagnose:(p,u)=> { if(u===p.c+p.b) return 'You forgot to divide by $'+p.a+'$ after subtracting.'; if(u===(p.c-p.b)*p.a) return 'You multiplied instead of dividing by $'+p.a+'$.'; return 'Step 1: subtract the constant from both sides. Step 2: divide both sides by the coefficient.'; }
+},
+{ id:'combine_like', name:'Combining Like Terms', level:5,
+  gen:()=>{ const c1=rand(1,8), c2=rand(1,8), k1=rand(-5,5), k2=rand(-5,5); const aCoef=c1+c2, constCoef=k1+k2; const prompt='$'+c1+'x '+fmt(k1)+' '+c2+'x '+fmt(k2)+'$'; return { c1,c2,k1,k2, aCoef, constCoef, prompt, answer:aCoef+'x'+fmt(constCoef), type:'expression' }; },
+  lesson:{ title:'Combining Like Terms', body:'Like terms have the same variables. Add their coefficients; keep the variable part. $3x + 5 + 2x - 3 = (3+2)x + (5-3) = 5x + 2$. Constants combine with constants; $x$-terms with $x$-terms.' },
+  diagnose:(p,u)=> 'Group $x$-terms together and constant terms together, then add their coefficients. Format as $Nx+K$ (e.g. 5x+2).'
+},
+{ id:'distribute', name:'Distribution', level:5,
+  gen:()=>{ const a=rand(2,9), b=rand(1,9), c=rand(-9,9); const axCoef=a, constCoef=a*c; const inner=b+'x'+fmt(c); return { a,b,c, axCoef, constCoef, prompt:'$'+a+'('+inner+')$', answer:axCoef+'x'+fmt(constCoef), type:'expression' }; },
+  lesson:{ title:'Distributive Property', body:'$a(b + c) = ab + ac$. Multiply the outside term by every term inside the parentheses. $3(x + 4) = 3x + 12$. Watch signs: $-2(x - 5) = -2x + 10$.' },
+  diagnose:(p,u)=> 'Multiply the outside coefficient by every term inside the parentheses, including signs.'
+},
+{ id:'var_both_sides', name:'Variables on Both Sides', level:5,
+  gen:()=>{ const x=rand(-9,9), a=rand(2,6), b=rand(1,5), k=rand(-10,10), m=a*x+k, n=b*x+k; return { a,b,k,x, lhs:m, rhs:n, prompt:'$'+a+'x + '+k+' = '+b+'x + '+k+'$', answer:x, type:'numeric' }; },
+  lesson:{ title:'Variables on Both Sides', body:'Move all $x$-terms to one side and all constants to the other. $3x + 2 = x + 8 \\Rightarrow 2x = 6 \\Rightarrow x = 3$. Subtract the smaller $x$-coefficient to keep $x$ positive.' },
+  diagnose:(p,u)=> 'Collect $x$-terms on one side (subtract the smaller coefficient), constants on the other, then divide.'
+},
+
+/* === LEVEL 6: Literal, inequalities, linear basics === */
+{ id:'literal', name:'Literal Equations', level:6,
+  gen:()=>{ const forms=[ {eq:'d = rt', solve:'t', ans:'d/r'}, {eq:'A = lw', solve:'w', ans:'a/l'}, {eq:'I = prt', solve:'r', ans:'i/(pt)'}, {eq:'P = 2l + 2w', solve:'l', ans:'(p-2w)/2'}, {eq:'V = \\frac{1}{3}Bh', solve:'B', ans:'3v/h'} ]; const f=pick(forms); return { eq:f.eq, solve:f.solve, prompt:'Solve $'+f.eq+'$ for $'+f.solve+'$. (Enter like d/r, no spaces)', answer:f.ans, type:'text' }; },
+  lesson:{ title:'Literal Equations', body:'Treat other variables as numbers and isolate the target variable with the same inverse operations used for numbers. To solve $d = rt$ for $t$, divide both sides by $r$: $t = d/r$.' },
+  diagnose:(p,u)=> 'Isolate the target variable using inverse operations. Divide by what multiplies it; subtract what adds to it.'
+},
+{ id:'inequality_one', name:'One-Step Inequalities', level:6,
+  gen:()=>{ const op=pick(['+','-','*','/']); const sym=pick(['>','<']); let prompt,ans; if(op==='+'){ const b=rand(2,15), c=rand(-15,15); prompt='$x + '+b+' '+sym+' '+c+'$'; ans='x'+sym+(c-b); } else if(op==='-'){ const b=rand(2,15), c=rand(-15,15); prompt='$x - '+b+' '+sym+' '+c+'$'; ans='x'+sym+(c+b); } else if(op==='*'){ const a=rand(2,6), c=rand(-12,12); const g=gcd(Math.abs(c),a); const num=c/g, den=a/g; const v=den===1?String(num):(num+'/'+den); prompt='$'+a+'x '+sym+' '+c+'$'; ans='x'+sym+v; } else { const a=rand(2,6), c=rand(-6,6); prompt='$\\frac{x}{'+a+'} '+sym+' '+c+'$'; ans='x'+sym+(a*c); } return { prompt, answer:ans, type:'text' }; },
+  lesson:{ title:'One-Step Inequalities', body:'Solve like equations, but **flip the inequality when multiplying or dividing by a negative**. $-2x < 6 \\Rightarrow x > -3$. Otherwise the symbol stays.' },
+  diagnose:(p,u)=> 'Use inverse operations. If you multiplied or divided by a negative number, flip the inequality sign.'
+},
+{ id:'inequality_two', name:'Two-Step Inequalities', level:6,
+  gen:()=>{ const a=rand(2,6), b=rand(-10,10), x=rand(-6,6), sym=pick(['>','<']); const c=a*x+b; return { a,b,c,x,sym, prompt:'$'+a+'x '+fmt(b)+' '+sym+' '+c+'$', answer:'x'+sym+x, type:'text' }; },
+  lesson:{ title:'Two-Step Inequalities', body:'Subtract the constant first, then divide by the coefficient. Flip the symbol only if you divide by a negative. $2x - 3 < 7 \\Rightarrow 2x < 10 \\Rightarrow x < 5$.' },
+  diagnose:(p,u)=> 'Step 1: subtract the constant. Step 2: divide by the coefficient (flip the sign if the coefficient is negative).'
+},
+{ id:'slope', name:'Slope from Two Points', level:6,
+  gen:()=>{ const x1=rand(-5,5), y1=rand(-5,5), dx=rand(1,6); let dy=rand(-4,4); if(dy===0)dy=2; const x2=x1+dx, y2=y1+dy; const g=gcd(Math.abs(dy),Math.abs(dx)); const sn=dy/g, sd=dx/g; const ans = sd===1 ? sn : (sn+'/'+sd); return { x1,y1,x2,y2, prompt:'Find the slope of the line through $('+x1+', '+y1+')$ and $('+x2+', '+y2+')$.', answer: ans, type: sd===1?'numeric':'fraction' }; },
+  lesson:{ title:'Slope Formula', body:'Slope $m = \\frac{y_2 - y_1}{x_2 - x_1} = \\frac{\\text{rise}}{\\text{run}}$. For $(1, 2)$ and $(4, 8)$: $m = \\frac{8-2}{4-1} = \\frac{6}{3} = 2$. Simplify the fraction if possible.' },
+  diagnose:(p,u)=> 'Use $m=\\frac{y_2-y_1}{x_2-x_1}$. Subtract $y$-values on top, $x$-values on bottom (in the same order).'
+},
+{ id:'y_intercept', name:'Slope-Intercept Form', level:6,
+  gen:()=>{ let m=rand(-5,5); if(m===0)m=2; const b=rand(-9,9); const ask=pick(['slope','yint']); const ans = ask==='slope'? m : b; return { m,b, ask, prompt:'For $y = '+m+'x + '+b+'$, what is the '+ (ask==='slope'?'slope ($m$)':'$y$-intercept ($b$)') +'?', answer:ans, type:'numeric' }; },
+  lesson:{ title:'Slope-Intercept Form', body:'$y = mx + b$: $m$ is the slope (coefficient of $x$), $b$ is the $y$-intercept (constant). For $y = -2x + 5$, slope is $-2$ and $y$-intercept is $5$.' },
+  diagnose:(p,u)=> 'In $y=mx+b$: $m$ = coefficient of $x$ (the slope), $b$ = the constant (the $y$-intercept).'
+},
+/* === LEVEL 7: Linear forms & exponent rules === */
+{ id:'standard_form', name:'Standard to Slope-Intercept', level:7,
+  gen:()=>{ const B=rand(1,6), sInt=rand(-5,5), C=rand(-12,12); const A=-sInt*B; return { A,B,C,sInt, prompt:'What is the slope of $'+A+'x + '+B+'y = '+C+'$?', answer:sInt, type:'numeric' }; },
+  lesson:{ title:'Standard Form', body:'For $Ax + By = C$, solve for $y$: $y = -\\frac{A}{B}x + \\frac{C}{B}$. So the slope is $m = -\\frac{A}{B}$. For $2x + 3y = 6$: $m = -\\frac{2}{3}$.' },
+  diagnose:(p,u)=> 'Convert $Ax+By=C$ to $y=mx+b$ by isolating $y$. Slope is $-A/B$.'
+},
+{ id:'systems', name:'Systems by Substitution', level:7,
+  gen:()=>{ const x=rand(-4,6), m=rand(2,4), b=rand(-5,5); const y=m*x+b; const d=rand(2,5); let e=rand(-3,3); if(e===0)e=2; const c2=d*x+e*y; return { x,y,m,b,d,e,c2, prompt:'Given $y = '+m+'x '+fmt(b)+'$ and $'+d+'x '+fmt(e)+'y = '+c2+'$, find $x$.', answer:x, type:'numeric' }; },
+  lesson:{ title:'Substitution Method', body:'Solve one equation for one variable, substitute into the other. If $y = 2x+1$ and $3x+y=11$, substitute: $3x + (2x+1) = 11 \\Rightarrow 5x = 10 \\Rightarrow x = 2$.' },
+  diagnose:(p,u)=> 'Substitute the expression for $y$ into the second equation, then solve for $x$.'
+},
+{ id:'exp_product', name:'Product of Powers', level:7,
+  gen:()=>{ const a=rand(2,8), b=rand(2,8); return { a,b, prompt:'Simplify $x^{'+a+'} \\cdot x^{'+b+'} = x^N$. What is $N$?', answer:a+b, type:'numeric' }; },
+  lesson:{ title:'Product of Powers', body:'When multiplying powers with the same base, ADD exponents: $x^a \\cdot x^b = x^{a+b}$. $x^3 \\cdot x^4 = x^7$. The base must be the same.' },
+  diagnose:(p,u)=> u===p.a*p.b ? 'You multiplied the exponents. ADD them instead: $x^a \\cdot x^b = x^{a+b}$.' : 'Same base, multiplied → add the exponents.'
+},
+{ id:'exp_quotient', name:'Quotient of Powers', level:7,
+  gen:()=>{ const a=rand(5,12), b=rand(2,4); return { a,b, prompt:'Simplify $\\frac{x^{'+a+'}}{x^{'+b+'}} = x^N$. What is $N$?', answer:a-b, type:'numeric' }; },
+  lesson:{ title:'Quotient of Powers', body:'Dividing powers with the same base: SUBTRACT exponents. $\\frac{x^a}{x^b} = x^{a-b}$. $\\frac{x^7}{x^3} = x^4$. Top exponent minus bottom exponent.' },
+  diagnose:(p,u)=> u===p.a*p.b ? 'You multiplied exponents. SUBTRACT instead: $x^a / x^b = x^{a-b}$.' : (u===p.a+p.b ? 'You added. Subtract the bottom exponent from the top.' : 'Same base, divided → subtract the bottom exponent from the top.')
+},
+{ id:'exp_power', name:'Power of a Power', level:7,
+  gen:()=>{ const a=rand(2,5), b=rand(2,4); return { a,b, prompt:'Simplify $(x^{'+a+'})^{'+b+'} = x^N$. What is $N$?', answer:a*b, type:'numeric' }; },
+  lesson:{ title:'Power of a Power', body:'A power raised to another power: MULTIPLY exponents. $(x^a)^b = x^{ab}$. $(x^3)^4 = x^{12}$. Outer exponent distributes to the inner.' },
+  diagnose:(p,u)=> u===p.a+p.b ? 'You added. MULTIPLY the exponents: $(x^a)^b = x^{ab}$.' : 'Power on top of power → multiply the exponents.'
+},
+
+/* === LEVEL 8: Polynomials & factoring === */
+{ id:'exp_negative', name:'Negative Exponents', level:8,
+  gen:()=>{ const base=rand(2,6), exp=rand(2,4); const den=Math.pow(base,exp); return { base,exp,den, prompt:'Rewrite $'+base+'^{-'+exp+'}$ as a fraction (e.g. 1/8).', answer:'1/'+den, type:'fraction' }; },
+  lesson:{ title:'Negative Exponents', body:'$x^{-n} = \\frac{1}{x^n}$. A negative exponent means reciprocal. $2^{-3} = \\frac{1}{2^3} = \\frac{1}{8}$. Move negative powers across the fraction bar to make them positive.' },
+  diagnose:(p,u)=> 'A negative exponent means reciprocal: $x^{-n} = 1/x^n$. Compute $'+p.base+'^'+p.exp+' first, then take the reciprocal.'
+},
+{ id:'exp_zero', name:'Zero Exponent', level:8,
+  gen:()=>{ const base=rand(2,9); return { base, prompt:'Simplify $'+base+'^0$', answer:1, type:'numeric' }; },
+  lesson:{ title:'Zero Exponent', body:'Any non-zero base to the 0 power equals 1: $x^0 = 1$ (for $x \\neq 0$). $5^0 = 1$, $100^0 = 1$, $(-3)^0 = 1$. The exponent counts zero factors of the base.' },
+  diagnose:(p,u)=> u===p.base ? 'You returned the base. Anything (non-zero) to the power 0 equals 1.' : 'Any non-zero number to the 0 power is 1.'
+},
+{ id:'poly_add', name:'Add Polynomials', level:8,
+  gen:()=>{ const c1=rand(2,8), c2=rand(2,8), k1=rand(-9,9), k2=rand(-9,9); const ax=c1+c2, co=k1+k2; return { c1,c2,k1,k2,ax,co, prompt:'$('+c1+'x '+fmt(k1)+') + ('+c2+'x '+fmt(k2)+')$', answer:ax+'x '+fmt(co), type:'expression' }; },
+  lesson:{ title:'Adding Polynomials', body:'Combine like terms: add the coefficients of $x$, then add the constants. $(3x + 5) + (2x - 3) = (3+2)x + (5-3) = 5x + 2$. Keep the variable parts unchanged.' },
+  diagnose:(p,u)=> 'Combine the $x$-coefficients, then combine the constants. Format as $Nx + K$ (e.g. 5x + 2).'
+},
+{ id:'poly_mul', name:'FOIL', level:8,
+  gen:()=>{ const a=rand(-6,6), b=rand(-6,6); const ab=a*b, sum=a+b; return { a,b,ab,sum, ask:pick(['coef','const']), prompt:'$(x '+fmt(a)+')(x '+fmt(b)+') = x^2 + Nx + M$. What is $M$ (the constant)?', answer:ab, type:'numeric' }; },
+  lesson:{ title:'FOIL', body:'First, Outer, Inner, Last. $(x+a)(x+b) = x^2 + (a+b)x + ab$. For $(x+3)(x+4)$: First $x^2$, Outer $4x$, Inner $3x$, Last $12$. Sum: $x^2 + 7x + 12$.' },
+  diagnose:(p,u)=> 'FOIL: multiply First, Outer, Inner, Last pairs. The constant is the product of the two constants (Last).'
+},
+{ id:'factor_gcf', name:'Factor out GCF', level:8,
+  gen:()=>{ const g=rand(2,6), a=rand(2,8), k=rand(-9,9); const axCoef=g*a, constCoef=g*k; return { g,a,k,axCoef,constCoef, prompt:'Factor out the GCF from $'+axCoef+'x '+fmt(constCoef)+'$. What is the GCF?', answer:g, type:'numeric' }; },
+  lesson:{ title:'GCF Factoring', body:'Find the largest number dividing both coefficients. $6x + 9 = 3(2x + 3)$ since GCF(6, 9) = 3. Divide each term by the GCF and place it outside the parentheses.' },
+  diagnose:(p,u)=> 'Find the largest integer that divides both coefficients. That\'s the GCF.'
+},
+
+/* === LEVEL 9: Factoring & quadratics === */
+{ id:'factor_trinomial', name:'Factor Trinomials', level:9,
+  gen:()=>{ let r1=rand(-6,6), r2=rand(-6,6); while(r1===r2) r2=rand(-6,6); const b=r1+r2, c=r1*r2; const smaller=Math.min(r1,r2); return { r1,r2,b,c,smaller, prompt:'Factor $x^2 '+fmt(b)+'x '+fmt(c)+'$ into $(x + A)(x + B)$ where $A \\leq B$. What is $A$?', answer:smaller, type:'numeric' }; },
+  lesson:{ title:'Factoring $x^2 + bx + c$', body:'Find two numbers that multiply to $c$ and add to $b$. For $x^2 + 5x + 6$: factors of $6$ that sum to $5$ are $2$ and $3$. So $x^2 + 5x + 6 = (x+2)(x+3)$.' },
+  diagnose:(p,u)=> 'Find two numbers that MULTIPLY to the constant and ADD to the middle coefficient. Those are the constants in $(x+A)(x+B)$.'
+},
+{ id:'factor_diff_squares', name:'Difference of Squares', level:9,
+  gen:()=>{ const a=rand(2,9), b=rand(2,9); return { a,b, prompt:'Factor $'+a+'^2 - '+b+'^2 = ('+a+' + N)('+a+' - N)$. What is $N$?', answer:b, type:'numeric' }; },
+  lesson:{ title:'Difference of Squares', body:'$a^2 - b^2 = (a+b)(a-b)$. The two perfect squares split into a sum and a difference of their roots. $16 - 9 = (4+3)(4-3) = 7$.' },
+  diagnose:(p,u)=> 'Take the square root of each perfect square. The pattern is $(a+b)(a-b)$.'
+},
+{ id:'solve_quadratic_factor', name:'Solve Quadratic by Factoring', level:9,
+  gen:()=>{ let r1=rand(-6,6), r2=rand(-6,6); while(r1===r2) r2=rand(-6,6); const b=r1+r2, c=r1*r2; const sol=Math.min(r1,r2); return { r1,r2,b,c,sol, prompt:'Solve $x^2 '+fmt(b)+'x '+fmt(c)+' = 0$. What is the smaller solution?', answer:sol, type:'numeric' }; },
+  lesson:{ title:'Solving $ax^2+bx+c=0$', body:'Factor the quadratic, set each factor to zero, solve. $x^2 + 5x + 6 = 0 \\Rightarrow (x+2)(x+3) = 0 \\Rightarrow x = -2$ or $x = -3$. The zero-product property is the key.' },
+  diagnose:(p,u)=> 'Factor it, then set each factor equal to zero and solve. The two roots are the constants negated.'
+},
+{ id:'discriminant', name:'Discriminant', level:9,
+  gen:()=>{ const a=rand(1,5), b=rand(-6,6), c=rand(-6,6); const disc=b*b-4*a*c; return { a,b,c,disc, prompt:'Compute the discriminant of $'+a+'x^2 '+fmt(b)+'x '+fmt(c)+' = 0$.', answer:disc, type:'numeric' }; },
+  lesson:{ title:'Discriminant', body:'$\\Delta = b^2 - 4ac$. If $\\Delta > 0$: two real roots. If $\\Delta = 0$: one root (a double root). If $\\Delta < 0$: no real roots. The sign tells you the nature of the solutions.' },
+  diagnose:(p,u)=> 'Compute $b^2 - 4ac$. Square $b$, subtract $4$ times $a$ times $c$.'
+},
+
+/* === LEVEL 10: Advanced equations & functions === */
+{ id:'radical_eq', name:'Radical Equations', level:10,
+  gen:()=>{ const a=rand(-9,9), b=rand(2,9); const x=b*b-a; return { a,b,x, prompt:'Solve $\\sqrt{x '+fmt(a)+'} = '+b+'$.', answer:x, type:'numeric' }; },
+  lesson:{ title:'Radical Equations', body:'Square both sides to remove the root, then solve the resulting linear equation. $\\sqrt{x + 3} = 5 \\Rightarrow x + 3 = 25 \\Rightarrow x = 22$. Always check for extraneous solutions by plugging back.' },
+  diagnose:(p,u)=> 'Square both sides to eliminate the root, then solve the resulting linear equation.'
+},
+{ id:'abs_val_eq', name:'Absolute Value Equations', level:10,
+  gen:()=>{ const h=rand(-5,5), k=rand(2,9); const x1=h+k, x2=h-k; const sol=Math.min(x1,x2); return { h,k,x1,x2,sol, prompt:'Solve $|x '+fmt(-h)+'| = '+k+'$. What is the smaller solution?', answer:sol, type:'numeric' }; },
+  lesson:{ title:'Absolute Value Equations', body:'$|x - h| = k$ splits into two equations: $x - h = k$ and $x - h = -k$. Solve both. $|x - 3| = 5 \\Rightarrow x = 8$ or $x = -2$.' },
+  diagnose:(p,u)=> 'Split $|x-h|=k$ into two cases: $x-h = k$ and $x-h = -k$. Solve each.'
+},
+{ id:'function_notation', name:'Function Notation', level:10,
+  gen:()=>{ let a=rand(-5,5); if(a===0)a=2; const b=rand(-9,9), x=rand(-6,6); return { a,b,x, fx:a*x+b, prompt:'If $f(x) = '+a+'x '+fmt(b)+', find $f('+x+')$.', answer:a*x+b, type:'numeric' }; },
+  lesson:{ title:'Function Notation', body:'$f(x)$ means "the output of $f$ at input $x$". Substitute the input for $x$ throughout. If $f(x) = 3x + 2$, then $f(4) = 3(4) + 2 = 14$. The number in parentheses replaces $x$.' },
+  diagnose:(p,u)=> 'Replace every $x$ in the function with the input value, then evaluate.'
+}
+];
+/* Topic lookup map */
+const TOPIC_MAP = {};
+TOPICS.forEach(t => TOPIC_MAP[t.id] = t);
+const STAGES = ['Initiate','Apprentice','Explorer','Practitioner','Strategist','Analyst','Tactician','Master','Architect','Mathematician'];
+const STAGE_DESC = [
+  'Building foundations with integers and signed numbers.',
+  'Practicing fractions, decimals, and order of operations.',
+  'Working with percents, ratios, and basic exponents.',
+  'Extending to roots, the coordinate plane, and geometry.',
+  'Solving one- and two-step equations with confidence.',
+  'Manipulating expressions and inequalities fluently.',
+  'Mastering linear forms and systems of equations.',
+  'Taming exponent rules and polynomial operations.',
+  'Factoring trinomials and solving quadratics.',
+  'Tackling radicals, absolute values, and functions.'
+];
+/* ---------- State & localStorage ---------- */
+const STORAGE_KEY = 'gebral_state_v1';
+const DEFAULT_STATE = {
+  hasPlaced: false,
+  level: 1,
+  stage: 'Initiate',
+  streak: 0,
+  lastVisitDate: null,
+  lastSessionDate: null,
+  todayMinutes: 0,
+  todayCorrect: 0,
+  todayAttempts: 0,
+  totalSolved: 0,
+  totalAttempts: 0,
+  topicStats: {},        // {id: {seen, right, redemptions, lastSeen}}
+  skillPathUnlocked: 1   // highest unlocked level (1..10)
+};
+let state = null;
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    state = Object.assign({}, DEFAULT_STATE, raw ? JSON.parse(raw) : {});
+    state.topicStats = state.topicStats || {};
+  } catch (e) {
+    state = Object.assign({}, DEFAULT_STATE, { topicStats: {} });
+  }
+  // Day rollover: reset today's progress if it's a new day
+  const today = todayKey();
+  if (state.lastVisitDate !== today) {
+    // If the user trained yesterday (or earlier this streak window), preserve streak only if last session was yesterday
+    if (state.lastSessionDate) {
+      const last = new Date(state.lastSessionDate);
+      const now = new Date();
+      const diffDays = Math.round((now - last) / (1000 * 60 * 60 * 24));
+      if (diffDays > 1) state.streak = 0; // missed a day → streak resets
+    }
+    state.todayMinutes = 0;
+    state.todayCorrect = 0;
+    state.todayAttempts = 0;
+    state.lastVisitDate = today;
+  }
+  saveState();
+}
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { /* storage may be unavailable */ }
+}
+
+function resetState() {
+  state = Object.assign({}, DEFAULT_STATE, { topicStats: {} });
+  state.lastVisitDate = todayKey();
+  saveState();
+}
+
+function topicStat(id) {
+  if (!state.topicStats[id]) state.topicStats[id] = { seen: 0, right: 0, redemptions: 0, lastSeen: 0 };
+  return state.topicStats[id];
+}
+
+function topicMastery(id) {
+  const t = state.topicStats[id] || { seen: 0, right: 0 };
+  if (t.seen === 0) return 0;
+  // mastery = right / seen * 100, with a small bonus for redemptions handled elsewhere
+  return Math.round((t.right / t.seen) * 100);
+}
+
+function levelMastery(level) {
+  const topics = TOPICS.filter(t => t.level === level);
+  if (topics.length === 0) return 0;
+  const mastered = topics.filter(t => topicMastery(t.id) >= 80).length;
+  return Math.round((mastered / topics.length) * 100);
+}
+
+function checkLevelUp() {
+  // If user's current level has >= 80% mastery on all topics AND has at least 3 seen per topic, level up
+  let leveled = false;
+  while (state.level < 10) {
+    const topics = TOPICS.filter(t => t.level === state.level);
+    const mastered = topics.filter(t => topicMastery(t.id) >= 80).length;
+    const seen = topics.filter(t => (state.topicStats[t.id] || {seen:0}).seen >= 2).length;
+    if (mastered >= Math.ceil(topics.length * 0.8) && seen >= Math.ceil(topics.length * 0.6)) {
+      state.level++;
+      state.stage = STAGES[state.level - 1];
+      if (state.level > state.skillPathUnlocked) state.skillPathUnlocked = state.level;
+      leveled = true;
+      toast('Level up! Now level ' + state.level + ' — ' + state.stage);
+    } else break;
+  }
+  if (leveled) saveState();
+  return leveled;
+}
+
+/* ---------- Screen routing ---------- */
+function showScreen(id) {
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  el.scrollTop = 0;
+}
+
+/* ---------- Background symbols ---------- */
+function spawnBgSymbols() {
+  const wrap = document.getElementById('symbols');
+  const syms = ['\\pi', '\\sum', '\\sqrt{x}', 'x^2', '\\infty', '\\int', '\\alpha', '\\theta', '\\phi', 'dx', '\\div', '\\pm', '\\leq'];
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement('div');
+    s.className = 'symbol';
+    try { s.innerHTML = katex.renderToString(pick(syms), { throwOnError: false }); } catch (e) { s.textContent = pick(syms); }
+    s.style.left = rand(0, 100) + '%';
+    s.style.top = rand(0, 100) + '%';
+    s.style.fontSize = rand(2, 4.5) + 'rem';
+    s.style.animationDelay = rand(0, 20) + 's';
+    s.style.animationDuration = rand(18, 28) + 's';
+    wrap.appendChild(s);
+  }
+}
+
+/* ---------- Particles canvas ---------- */
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function resizeCanvas() { canvas.width = innerWidth; canvas.height = innerHeight; }
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function spawnBurst(x, y, color, count) {
+  count = count || 28;
+  color = color || '#35e1ff';
+  for (let i = 0; i < count; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const sp = 2 + Math.random() * 6;
+    particles.push({
+      x: x, y: y,
+      vx: Math.cos(ang) * sp,
+      vy: Math.sin(ang) * sp - 1,
+      life: 1, decay: 0.018 + Math.random() * 0.015,
+      color: color, size: 1.5 + Math.random() * 2.5,
+      gravity: 0.18
+    });
+  }
+}
+
+function confetti() {
+  const colors = ['#35e1ff', '#eaffff', '#35ff8b', '#ffb84d', '#7a4dff'];
+  for (let i = 0; i < 180; i++) {
+    particles.push({
+      x: innerWidth / 2 + (Math.random() - 0.5) * 240,
+      y: innerHeight / 3,
+      vx: (Math.random() - 0.5) * 14,
+      vy: -Math.random() * 14 - 3,
+      life: 1.4, decay: 0.008 + Math.random() * 0.005,
+      color: pick(colors), size: 4 + Math.random() * 4,
+      gravity: 0.32,
+      shape: 'rect',
+      rot: Math.random() * Math.PI * 2,
+      rotV: (Math.random() - 0.5) * 0.25
+    });
+  }
+}
+
+function tickParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles = particles.filter(p => p.life > 0 && p.y < canvas.height + 40);
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.life -= p.decay;
+    if (p.rot !== undefined) p.rot += p.rotV;
+    ctx.globalAlpha = Math.max(0, Math.min(1, p.life));
+    ctx.fillStyle = p.color;
+    if (p.shape === 'rect') {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot || 0);
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      ctx.restore();
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(tickParticles);
+}
+
+/* ---------- Toast ---------- */
+function toast(msg, ms) {
+  const wrap = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, ms || 3200);
+}
+
+/* ---------- Progress ring animation ---------- */
+function setRing(name, value, max, label) {
+  const circ = 2 * Math.PI * 42; // matches r=42 in viewBox
+  const ring = document.querySelector('[data-ring="' + name + '"]');
+  const text = document.querySelector('[data-ring-text="' + name + '"]');
+  if (!ring) return;
+  const pct = Math.min(1, Math.max(0, value / max));
+  const offset = circ * (1 - pct);
+  ring.style.strokeDashoffset = offset;
+  if (text) text.textContent = label;
+  const wrap = ring.closest('.ring-wrap');
+  if (wrap) wrap.classList.toggle('done', pct >= 1);
+}
+
+/* ---------- Diagnosis helper ---------- */
+function diagnoseAnswer(topic, problem, userAnswer) {
+  let msg = 'Take another look at the rules and try the redemption.';
+  try {
+    if (topic.diagnose) {
+      const m = topic.diagnose(problem, userAnswer);
+      if (m) msg = m;
+    }
+  } catch (e) { /* fall through */ }
+  return msg;
+}
+
+/* ---------- Walkthrough builder (generic step-by-step) ---------- */
+function buildWalkthrough(topic, problem) {
+  // Many topics provide a generic walkthrough via their lesson; we build a topic-specific one where possible
+  const steps = [];
+  const id = topic.id;
+  const p = problem;
+  switch (id) {
+    case 'int_add': case 'int_sub':
+      steps.push('Identify the signs of $' + p.a + '$ and $' + p.b + '$.');
+      steps.push('Same signs: add absolute values, keep sign. Different signs: subtract smaller abs from larger, keep larger sign.');
+      steps.push('Compute: $' + p.a + ' ' + (id === 'int_add' ? '+' : '-') + ' (' + p.b + ') = ' + p.answer + '$.');
+      break;
+    case 'int_mul': case 'int_div':
+      steps.push('Multiply/divide the absolute values: $|' + p.a + '| ' + (id === 'int_mul' ? '\\times' : '\\div') + ' |' + p.b + '|$.');
+      steps.push('Count negative signs: even → positive, odd → negative.');
+      steps.push('Result: $' + p.answer + '$.');
+      break;
+    case 'abs_val':
+      steps.push('$|x|$ is the distance from zero, always non-negative.');
+      steps.push('$|' + p.a + '| = ' + p.answer + '$.');
+      break;
+    case 'order_ops':
+      steps.push('Multiplication first: $' + p.b + ' \\cdot ' + p.c + ' = ' + (p.b * p.c) + '$.');
+      steps.push('Now add and subtract left to right: $' + p.a + ' + ' + (p.b * p.c) + ' - ' + p.d + ' = ' + p.answer + '$.');
+      break;
+    case 'frac_simp':
+      steps.push('Find $\\gcd(' + p.num + ', ' + p.den + ') = ' + gcd(p.num, p.den) + '$.');
+      steps.push('Divide top and bottom by the GCD: $\\frac{' + p.num + ' \\div ' + gcd(p.num, p.den) + '}{' + p.den + ' \\div ' + gcd(p.num, p.den) + '} = \\frac{' + p.sN + '}{' + p.sD + '}$.');
+      break;
+    case 'frac_add':
+      steps.push('Common denominator: $\\text{lcm}(' + p.d1 + ', ' + p.d2 + ') = ' + p.cd + '$.');
+      steps.push('Rewrite with the common denominator and add numerators.');
+      steps.push('Simplify the result to $' + p.answer + '$.');
+      break;
+    case 'frac_mul':
+      steps.push('Multiply numerators: $' + p.n1 + ' \\times ' + p.n2 + ' = ' + (p.n1 * p.n2) + '$.');
+      steps.push('Multiply denominators: $' + p.d1 + ' \\times ' + p.d2 + ' = ' + (p.d1 * p.d2) + '$.');
+      steps.push('Simplify $\\frac{' + (p.n1 * p.n2) + '}{' + (p.d1 * p.d2) + '}$ to $' + p.answer + '$.');
+      break;
+    case 'decimal_ops':
+      steps.push('Line up decimal points.');
+      steps.push('Perform the $' + p.op + '$ operation digit by digit, carrying as needed.');
+      steps.push('Result: $' + p.answer + '$.');
+      break;
+    case 'percent_of':
+      steps.push('Convert $' + p.p + '\\%$ to a decimal: $' + (p.p / 100) + '$.');
+      steps.push('Multiply by the number: $' + (p.p / 100) + ' \\times ' + p.n + ' = ' + p.answer + '$.');
+      break;
+    case 'percent_change':
+      steps.push('Find the difference: $' + p.nv + ' - ' + p.o + ' = ' + p.d + '$.');
+      steps.push('Divide by the original and multiply by 100: $\\frac{' + p.d + '}{' + p.o + '} \\times 100 = ' + p.answer + '\\%$.');
+      break;
+    case 'gcf':
+      steps.push('Find prime factorizations of $' + p.a + '$ and $' + p.b + '$.');
+      steps.push('Take the smallest power of each shared prime.');
+      steps.push('GCF $= ' + p.answer + '$.');
+      break;
+    case 'lcm':
+      steps.push('Find prime factorizations of $' + p.a + '$ and $' + p.b + '$.');
+      steps.push('Take the highest power of each prime that appears.');
+      steps.push('LCM $= ' + p.answer + '$.');
+      break;
+    case 'ratios':
+      steps.push('Identify the multiplier between the two known parts.');
+      steps.push('Apply the same multiplier to the missing part.');
+      steps.push('Missing value $= ' + p.answer + '$.');
+      break;
+    case 'exp_basic':
+      steps.push('$' + p.base + '^{' + p.exp + '}$ means $' + p.base + '$ multiplied by itself $' + p.exp + '$ times.');
+      steps.push('Compute: $' + p.base + '^{' + p.exp + '} = ' + p.answer + '$.');
+      break;
+    case 'sqrt':
+      steps.push('Ask: what non-negative number squared equals $' + p.n + '$?');
+      steps.push('$\\sqrt{' + p.n + '} = ' + p.answer + '$.');
+      break;
+    case 'coord_plane':
+      steps.push('Look at the sign of $x = ' + p.x + '$ and $y = ' + p.y + '$.');
+      steps.push('$(+,+)$ → I, $(-,+)$ → II, $(-,-)$ → III, $(+,-)$ → IV. So quadrant $' + p.answer + '$.');
+      break;
+    case 'pythagorean':
+      steps.push('Use $a^2 + b^2 = c^2$: $(' + p.a + ')^2 + (' + p.b + ')^2 = c^2$.');
+      steps.push('$' + (p.a * p.a) + ' + ' + (p.b * p.b) + ' = ' + (p.a * p.a + p.b * p.b) + '$.');
+      steps.push('Take the square root: $c = ' + p.c + '$.');
+      break;
+    case 'sci_notation':
+      steps.push('Move the decimal in $' + p.N + '$ until one non-zero digit sits in front.');
+      steps.push('Count the moves: $b = ' + p.b + '$.');
+      steps.push('Write $' + p.mant + ' \\times 10^{' + p.b + '}$.');
+      break;
+    case 'one_step': case 'two_step':
+      steps.push('Undo the constant: subtract or add to both sides.');
+      if (id === 'two_step') steps.push('Now undo the coefficient: divide both sides by $' + p.a + '$.');
+      steps.push('Solution: $x = ' + p.answer + '$.');
+      break;
+    case 'combine_like':
+      steps.push('Group $x$-terms: $' + p.c1 + 'x + ' + p.c2 + 'x = ' + p.aCoef + 'x$.');
+      steps.push('Group constants: $' + p.k1 + ' + ' + p.k2 + ' = ' + p.constCoef + '$.');
+      steps.push('Combine: $' + p.answer + '$.');
+      break;
+    case 'distribute':
+      steps.push('Multiply the outside coefficient by each inside term.');
+      steps.push('$' + p.a + ' \\cdot ' + p.b + 'x = ' + (p.a * p.b) + 'x$ and $' + p.a + ' \\cdot (' + p.c + ') = ' + (p.a * p.c) + '$.');
+      steps.push('Combine: $' + p.answer + '$.');
+      break;
+    case 'var_both_sides':
+      steps.push('Subtract the smaller $x$-coefficient from both sides to collect $x$ on one side.');
+      steps.push('Move constants to the other side, then divide by the $x$-coefficient.');
+      steps.push('Solution: $x = ' + p.answer + '$.');
+      break;
+    case 'literal':
+      steps.push('Treat other variables as numbers. Use inverse operations to isolate the target variable.');
+      steps.push('The answer should be an expression in the other variables.');
+      break;
+    case 'inequality_one': case 'inequality_two':
+      steps.push('Subtract the constant from both sides.');
+      steps.push('Divide by the coefficient (flip the inequality if the coefficient is negative).');
+      steps.push('Solution: $' + p.answer + '$.');
+      break;
+    case 'slope':
+      steps.push('Use $m = \\frac{y_2 - y_1}{x_2 - x_1} = \\frac{' + p.y2 + ' - ' + p.y1 + '}{' + p.x2 + ' - ' + p.x1 + '}$.');
+      steps.push('Simplify: $m = ' + p.answer + '$.');
+      break;
+    case 'y_intercept':
+      steps.push('In $y = mx + b$, the slope is the coefficient of $x$ and the $y$-intercept is the constant.');
+      steps.push(p.ask === 'slope' ? 'Slope $m = ' + p.m + '$.' : 'The $y$-intercept is $b = ' + p.b + '$.');
+      break;
+    case 'standard_form':
+      steps.push('Isolate $y$: $' + p.B + 'y = -' + p.A + 'x + ' + p.C + '$ → $y = -\\frac{' + p.A + '}{' + p.B + '}x + \\frac{' + p.C + '}{' + p.B + '}$.');
+      steps.push('Slope $= -\\frac{A}{B} = ' + p.sInt + '$.');
+      break;
+    case 'systems':
+      steps.push('Substitute $y = ' + p.m + 'x + ' + (p.b >= 0 ? p.b : '(' + p.b + ')') + '$ into the second equation.');
+      steps.push('Solve for $x$, then back-substitute to find $y$ if needed.');
+      steps.push('Solution: $x = ' + p.x + '$.');
+      break;
+    case 'exp_product': case 'exp_quotient': case 'exp_power':
+      steps.push('Same base — combine exponents with the right rule.');
+      steps.push(id === 'exp_product' ? 'Add: $' + p.a + ' + ' + p.b + ' = ' + (p.a + p.b) + '$.'
+        : id === 'exp_quotient' ? 'Subtract: $' + p.a + ' - ' + p.b + ' = ' + (p.a - p.b) + '$.'
+        : 'Multiply: $' + p.a + ' \\times ' + p.b + ' = ' + (p.a * p.b) + '$.');
+      break;
+    case 'exp_negative':
+      steps.push('$x^{-n} = \\frac{1}{x^n}$. Compute $' + p.base + '^{' + p.exp + '} = ' + p.den + '$ first.');
+      steps.push('Take the reciprocal: $\\frac{1}{' + p.den + '}$.');
+      break;
+    case 'exp_zero':
+      steps.push('Any non-zero base to the 0 power equals 1.');
+      steps.push('$' + p.base + '^0 = 1$.');
+      break;
+    case 'poly_add':
+      steps.push('Add $x$-coefficients: $' + p.c1 + ' + ' + p.c2 + ' = ' + p.ax + '$.');
+      steps.push('Add constants: $' + p.k1 + ' + ' + p.k2 + ' = ' + p.co + '$.');
+      steps.push('Result: $' + p.answer + '$.');
+      break;
+    case 'poly_mul':
+      steps.push('FOIL: First $x \\cdot x = x^2$.');
+      steps.push('Outer + Inner = $(' + p.a + ' + ' + p.b + ')x = ' + p.sum + 'x$.');
+      steps.push('Last = $' + p.a + ' \\times ' + p.b + ' = ' + p.ab + '$. So the constant $M = ' + p.ab + '$.');
+      break;
+    case 'factor_gcf':
+      steps.push('Find the largest integer dividing both coefficients: GCF $= ' + p.g + '$.');
+      steps.push('Divide each term by the GCF to write the factored form $' + p.g + '(\\ldots)$.');
+      break;
+    case 'factor_trinomial':
+      steps.push('Find two numbers that multiply to $' + p.c + '$ and add to $' + p.b + '$.');
+      steps.push('Those numbers are $' + p.r1 + '$ and $' + p.r2 + '$.');
+      steps.push('Write $(x + ' + p.r1 + ')(x + ' + p.r2 + ')$. The smaller constant is $' + p.smaller + '$.');
+      break;
+    case 'factor_diff_squares':
+      steps.push('$a^2 - b^2 = (a+b)(a-b)$.');
+      steps.push('Here $a = ' + p.a + '$ and $b = ' + p.b + '$, so $N = ' + p.b + '$.');
+      break;
+    case 'solve_quadratic_factor':
+      steps.push('Find two numbers that multiply to $' + p.c + '$ and add to $' + p.b + '$: $' + p.r1 + '$ and $' + p.r2 + '$.');
+      steps.push('Factor: $(x + ' + p.r1 + ')(x + ' + p.r2 + ') = 0$.');
+      steps.push('Set each factor to zero: $x = ' + p.r1 + '$ or $x = ' + p.r2 + '$. Smaller: $' + p.sol + '$.');
+      break;
+    case 'discriminant':
+      steps.push('Identify $a = ' + p.a + ', b = ' + p.b + ', c = ' + p.c + '$.');
+      steps.push('Compute $b^2 - 4ac = ' + (p.b * p.b) + ' - 4(' + p.a + ')(' + p.c + ') = ' + p.disc + '$.');
+      break;
+    case 'radical_eq':
+      steps.push('Square both sides: $x + (' + p.a + ') = ' + (p.b * p.b) + '$.');
+      steps.push('Solve for $x$: $x = ' + (p.b * p.b) + ' - ' + p.a + ' = ' + p.x + '$.');
+      break;
+    case 'abs_val_eq':
+      steps.push('Split into two cases: $x + (' + (-p.h) + ') = ' + p.k + '$ and $x + (' + (-p.h) + ') = -' + p.k + '$.');
+      steps.push('Solutions: $x = ' + p.x1 + '$ and $x = ' + p.x2 + '$. Smaller: $' + p.sol + '$.');
+      break;
+    case 'function_notation':
+      steps.push('Substitute $x = ' + p.x + '$ into $f(x) = ' + p.a + 'x + ' + (p.b >= 0 ? p.b : '(' + p.b + ')') + '$.');
+      steps.push('Compute: $f(' + p.x + ') = ' + (p.a * p.x) + ' + ' + p.b + ' = ' + p.fx + '$.');
+      break;
+    default:
+      steps.push('Review the lesson card and the rules above, then try the redemption.');
+  }
+  return steps;
+}
+/* ---------- Question card builder ---------- */
+function buildLessonCard(topic) {
+  const card = document.createElement('div');
+  card.className = 'lesson-card';
+  card.innerHTML = '<div class="lesson-tag">' + ICO.book + '<span>Lesson</span></div>'
+    + '<div class="lesson-title">' + topic.lesson.title + '</div>'
+    + '<div class="lesson-body">' + topic.lesson.body + '</div>';
+  renderMathIn(card.querySelector('.lesson-body'));
+  return card;
+}
+
+function buildQuestionCard(topic, problem, opts) {
+  opts = opts || {};
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  card.innerHTML = '<div class="q-head">'
+    + '<div class="q-topic">' + topic.name + '</div>'
+    + '<div class="q-num">' + (opts.label || 'Question') + '</div>'
+    + '</div>'
+    + '<div class="q-prompt">' + problem.prompt + '</div>'
+    + '<div class="q-input-row">'
+    + '<input class="q-input" type="text" autocomplete="off" spellcheck="false" placeholder="Your answer…">'
+    + '<button class="btn btn-primary" data-action="submit">Submit</button>'
+    + '</div>'
+    + '<div class="q-hint">' + (problem.hint || hintText(problem.type)) + '</div>';
+  renderMathIn(card.querySelector('.q-prompt'));
+  const input = card.querySelector('.q-input');
+  const submit = card.querySelector('[data-action="submit"]');
+  setTimeout(() => input.focus(), 50);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submit.click(); }
+  });
+  return { card, input, submit };
+}
+
+function hintText(type) {
+  if (type === 'fraction') return 'Enter a fraction like 3/4';
+  if (type === 'expression') return 'Format like 5x+2 (no spaces, coefficient first)';
+  if (type === 'text') return 'Enter your answer as instructed';
+  if (type === 'integer') return 'Enter an integer';
+  return 'Enter a number';
+}
+
+function checkAnswer(problem, userInput) {
+  const checker = CHECKERS[problem.type] || CHECKERS.numeric;
+  try { return checker(userInput, problem.answer, problem); }
+  catch (e) { return false; }
+}
+
+/* ---------- Placement test ---------- */
+let placement = null;
+
+function startPlacement() {
+  placement = {
+    qNum: 0,
+    total: 30,
+    level: 3,
+    results: [],            // [{level, correct}]
+    perLevel: {},           // {level: {seen, right}}
+    current: null,          // {topic, problem}
+    answered: false
+  };
+  showScreen('placement');
+  nextPlacementQuestion();
+}
+
+function nextPlacementQuestion() {
+  if (placement.qNum >= placement.total) { return finishPlacement(); }
+  placement.qNum++;
+  placement.answered = false;
+  // Pick a topic at the current level (or nearest non-empty level)
+  const topics = TOPICS.filter(t => t.level === placement.level);
+  const topic = topics.length ? pick(topics) : pick(TOPICS.filter(t => Math.abs(t.level - placement.level) <= 1));
+  const problem = topic.gen();
+  placement.current = { topic, problem };
+  $('#place-q').textContent = placement.qNum;
+  $('#place-lvl').textContent = placement.level;
+  $('#place-fill').style.width = ((placement.qNum - 1) / placement.total * 100) + '%';
+  const body = $('#place-body');
+  body.innerHTML = '';
+  const { card, input, submit } = buildQuestionCard(topic, problem, { label: 'Question ' + placement.qNum + ' of ' + placement.total });
+  body.appendChild(card);
+  submit.addEventListener('click', () => handlePlacementAnswer(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handlePlacementAnswer(input.value); }
+  });
+  setTimeout(() => input.focus(), 60);
+}
+
+function handlePlacementAnswer(userInput) {
+  if (placement.answered) return;
+  placement.answered = true;
+  const { topic, problem } = placement.current;
+  const correct = checkAnswer(problem, userInput);
+  const input = $('.q-input');
+  if (correct) {
+    input.classList.add('right');
+    spawnBurst(input.getBoundingClientRect().left + input.offsetWidth / 2, input.getBoundingClientRect().top + input.offsetHeight / 2, '#35ff8b', 18);
+    placement.level = Math.min(10, placement.level + (placement.level < 5 ? 2 : 1));
+  } else {
+    input.classList.add('wrong');
+    spawnBurst(input.getBoundingClientRect().left + input.offsetWidth / 2, input.getBoundingClientRect().top + input.offsetHeight / 2, '#ff4d6d', 18);
+    placement.level = Math.max(1, placement.level - (placement.level > 5 ? 2 : 1));
+  }
+  if (!placement.perLevel[placement.level]) placement.perLevel[placement.level] = { seen: 0, right: 0 };
+  // Track at the level the question was ASKED at, not the new level
+  const askedLevel = topic.level;
+  if (!placement.perLevel[askedLevel]) placement.perLevel[askedLevel] = { seen: 0, right: 0 };
+  placement.perLevel[askedLevel].seen++;
+  if (correct) placement.perLevel[askedLevel].right++;
+  placement.results.push({ level: askedLevel, correct });
+  setTimeout(nextPlacementQuestion, 700);
+}
+
+function finishPlacement() {
+  // Compute final level: highest level with >= 50% correct AND >= 2 seen; fallback to last asked level
+  let finalLevel = 1;
+  for (let lvl = 10; lvl >= 1; lvl--) {
+    const r = placement.perLevel[lvl];
+    if (r && r.seen >= 2 && r.right / r.seen >= 0.5) { finalLevel = lvl; break; }
+  }
+  if (finalLevel === 1 && placement.results.length) {
+    // Use the average level of correct answers
+    const correctOnes = placement.results.filter(r => r.correct);
+    if (correctOnes.length >= 5) {
+      const avg = correctOnes.reduce((s, r) => s + r.level, 0) / correctOnes.length;
+      finalLevel = Math.max(1, Math.min(10, Math.round(avg)));
+    }
+  }
+  state.level = finalLevel;
+  state.stage = STAGES[finalLevel - 1];
+  state.skillPathUnlocked = Math.max(state.skillPathUnlocked, finalLevel);
+  state.hasPlaced = true;
+  saveState();
+  showGauge(finalLevel);
+}
+
+function showGauge(level) {
+  showScreen('gauge-screen');
+  const fill = $('#gauge-fill');
+  const num = $('#gauge-num');
+  const stage = $('#gauge-stage');
+  const desc = $('#gauge-desc');
+  // Animate the gauge fill
+  const total = 330; // matches the dasharray
+  const pct = (level - 1) / 9; // 0..1
+  fill.style.strokeDashoffset = total;
+  num.textContent = '0';
+  stage.textContent = '—';
+  desc.textContent = '';
+  setTimeout(() => { fill.style.strokeDashoffset = total * (1 - pct); }, 100);
+  let n = 0;
+  const target = level;
+  const dur = 1400;
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    n = Math.round(target * eased);
+    num.textContent = n;
+    if (t < 1) requestAnimationFrame(step);
+    else {
+      num.textContent = target;
+      stage.textContent = STAGES[level - 1];
+      desc.textContent = STAGE_DESC[level - 1];
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+/* ---------- Dashboard renderer ---------- */
+function renderDashboard() {
+  // Stats
+  $('#stat-streak').textContent = state.streak;
+  $('#stat-total').textContent = state.totalSolved;
+  $('#stat-level').textContent = state.level;
+  $('#stat-stage').textContent = state.stage;
+  // Mission rings + stats
+  const timeMax = 30, corrMax = 30;
+  const acc = state.todayAttempts > 0 ? Math.round((state.todayCorrect / state.todayAttempts) * 100) : 0;
+  setRing('time', state.todayMinutes, timeMax, state.todayMinutes + 'm');
+  setRing('correct', state.todayCorrect, corrMax, state.todayCorrect);
+  setRing('accuracy', acc, 100, acc + '%');
+  $('#stat-time').textContent = state.todayMinutes;
+  $('#stat-correct').textContent = state.todayCorrect;
+  $('#stat-accuracy').textContent = acc + '%';
+  // Skill path
+  const skillPath = $('#skill-path');
+  skillPath.innerHTML = '';
+  for (let lvl = 1; lvl <= 10; lvl++) {
+    const node = document.createElement('div');
+    node.className = 'skill-node';
+    if (lvl <= state.skillPathUnlocked) node.classList.add('unlocked');
+    if (lvl === state.level) node.classList.add('current');
+    node.textContent = lvl;
+    node.title = STAGES[lvl - 1];
+    node.addEventListener('click', () => { startSession(null, lvl); });
+    skillPath.appendChild(node);
+  }
+  // Path fill (the bright segment width)
+  const fillPct = ((state.skillPathUnlocked - 1) / 9) * 100;
+  skillPath.style.setProperty('--path-fill', fillPct + '%');
+  // Topics list — group by level
+  const list = $('#topics-list');
+  list.innerHTML = '';
+  let lastLevel = 0;
+  TOPICS.forEach(t => {
+    if (t.level !== lastLevel) {
+      lastLevel = t.level;
+      const g = document.createElement('div');
+      g.className = 'topic-group';
+      g.textContent = 'Level ' + t.level + ' — ' + STAGES[t.level - 1];
+      list.appendChild(g);
+    }
+    const m = topicMastery(t.id);
+    const stat = state.topicStats[t.id] || { seen: 0, right: 0, redemptions: 0 };
+    const locked = t.level > state.skillPathUnlocked;
+    const row = document.createElement('div');
+    row.className = 'topic-row' + (locked ? ' locked' : '');
+    row.innerHTML = '<div class="topic-top">'
+      + '<div class="topic-name">' + t.name + '</div>'
+      + '<div class="topic-lvl">L' + t.level + '</div>'
+      + '</div>'
+      + '<div class="topic-bar"><div class="topic-bar-fill' + (m >= 80 ? ' mastered' : '') + '" style="width:' + m + '%"></div></div>'
+      + '<div class="topic-bottom">'
+      + '<span class="topic-stats">' + stat.right + '/' + stat.seen + (stat.redemptions ? ' · ' + stat.redemptions + ' redeemed' : '') + '</span>'
+      + '<button class="btn btn-ghost btn-sm" data-drill="' + t.id + '"' + (locked ? ' disabled' : '') + '>' + (locked ? 'Locked' : 'Drill') + '</button>'
+      + '</div>';
+    if (!locked) row.querySelector('[data-drill]').addEventListener('click', () => startSession(t.id));
+    list.appendChild(row);
+  });
+  list.scrollTop = 0;
+}
+
+/* ---------- Session engine ---------- */
+let session = null;
+
+function startSession(topicId, forceLevel) {
+  if (session) endSession(false);
+  session = {
+    topicId: topicId || null,                          // null = mixed mode
+    forceLevel: forceLevel || null,
+    startTime: Date.now(),
+    timeTick: 0,
+    asked: 0,
+    correct: 0,
+    streak: 0,
+    lessonCountdown: 0,
+    current: null,
+    answered: false,
+    timer: null
+  };
+  showScreen('session');
+  $('#sess-body').innerHTML = '';
+  // Show a lesson card on session start
+  const firstTopic = pickSessionTopic();
+  if (firstTopic) showLessonThenQuestion(firstTopic);
+  // Start timer (counts minutes)
+  session.timer = setInterval(tickSessionTimer, 1000);
+  updateSessionMeta();
+}
+
+function pickSessionTopic() {
+  if (session.topicId) return TOPIC_MAP[session.topicId];
+  // Mixed mode: prefer current level topics, fallback to nearby levels
+  let level = session.forceLevel || state.level;
+  let pool = TOPICS.filter(t => t.level === level);
+  if (pool.length === 0) pool = TOPICS.filter(t => Math.abs(t.level - level) <= 1);
+  if (pool.length === 0) pool = TOPICS;
+  return pick(pool);
+}
+
+function showLessonThenQuestion(topic) {
+  const body = $('#sess-body');
+  body.innerHTML = '';
+  body.appendChild(buildLessonCard(topic));
+  const next = document.createElement('div');
+  next.style.textAlign = 'center';
+  next.innerHTML = '<button class="btn btn-primary" id="lesson-continue">' + ICO.zap + '<span>Start Practice</span></button>';
+  body.appendChild(next);
+  $('#lesson-continue').addEventListener('click', () => askNextQuestion(topic));
+  updateSessionMeta();
+}
+
+function askNextQuestion(forcedTopic) {
+  const topic = forcedTopic || pickSessionTopic();
+  if (!topic) return;
+  // Every 6 questions, show a lesson card from the user's current level (only in mixed mode, or every 6 in drill mode too)
+  const body = $('#sess-body');
+  body.innerHTML = '';
+  if (session.asked > 0 && session.asked % 6 === 0 && !forcedTopic) {
+    const lessonTopic = pick(TOPICS.filter(t => t.level === state.level));
+    body.appendChild(buildLessonCard(lessonTopic));
+  }
+  const problem = topic.gen();
+  session.current = { topic, problem };
+  session.answered = false;
+  const { card, input, submit } = buildQuestionCard(topic, problem, { label: '#' + (session.asked + 1) });
+  body.appendChild(card);
+  submit.addEventListener('click', () => handleSessionAnswer(input.value, input, card));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleSessionAnswer(input.value, input, card); }
+  });
+  setTimeout(() => input.focus(), 60);
+  updateSessionMeta();
+}
+
+function handleSessionAnswer(userInput, inputEl, cardEl) {
+  if (session.answered) return;
+  session.answered = true;
+  const { topic, problem } = session.current;
+  const correct = checkAnswer(problem, userInput);
+  // Track stats
+  const stat = topicStat(topic.id);
+  stat.seen++;
+  state.todayAttempts++;
+  state.totalAttempts++;
+  stat.lastSeen = Date.now();
+  if (correct) {
+    stat.right++;
+    state.todayCorrect++;
+    state.totalSolved++;
+    session.correct++;
+    session.streak++;
+    inputEl.classList.add('right');
+    const rect = inputEl.getBoundingClientRect();
+    spawnBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, '#35ff8b', 24);
+    // Brief feedback card
+    showFeedback(cardEl, true, 'Correct. +' + session.streak + ' in a row.');
+    setTimeout(() => {
+      session.asked++;
+      checkLevelUp();
+      checkMissionComplete();
+      saveState();
+      askNextQuestion();
+    }, 900);
+  } else {
+    session.streak = 0;
+    inputEl.classList.add('wrong');
+    const rect = inputEl.getBoundingClientRect();
+    spawnBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, '#ff4d6d', 22);
+    const msg = diagnoseAnswer(topic, problem, userInput);
+    showFeedback(cardEl, false, msg, topic, problem, userInput);
+    saveState();
+  }
+  updateSessionMeta();
+}
+
+function showFeedback(cardEl, correct, msg, topic, problem, userInput) {
+  const existing = cardEl.querySelector('.feedback');
+  if (existing) existing.remove();
+  const fb = document.createElement('div');
+  fb.className = 'feedback ' + (correct ? 'right' : 'wrong');
+  fb.innerHTML = '<div class="feedback-head">' + (correct ? ICO.check : ICO.x) + '<span>' + (correct ? 'Correct' : 'Not quite') + '</span></div>'
+    + '<div class="feedback-body">' + msg + '</div>';
+  renderMathIn(fb.querySelector('.feedback-body'));
+  if (!correct && topic && problem) {
+    const actions = document.createElement('div');
+    actions.className = 'feedback-actions';
+    const btnWalk = document.createElement('button');
+    btnWalk.className = 'btn btn-ghost btn-sm';
+    btnWalk.innerHTML = ICO.book + '<span>Walkthrough</span>';
+    btnWalk.addEventListener('click', () => showWalkthrough(cardEl, topic, problem));
+    const btnRedeem = document.createElement('button');
+    btnRedeem.className = 'btn btn-primary btn-sm';
+    btnRedeem.innerHTML = ICO.redo + '<span>Redemption</span>';
+    btnRedeem.addEventListener('click', () => startRedemption(cardEl, topic));
+    const btnSkip = document.createElement('button');
+    btnSkip.className = 'btn btn-ghost btn-sm';
+    btnSkip.innerHTML = ICO.close + '<span>Skip</span>';
+    btnSkip.addEventListener('click', () => {
+      session.asked++;
+      saveState();
+      askNextQuestion();
+    });
+    actions.appendChild(btnWalk);
+    actions.appendChild(btnRedeem);
+    actions.appendChild(btnSkip);
+    fb.appendChild(actions);
+  }
+  cardEl.appendChild(fb);
+}
+
+function showWalkthrough(cardEl, topic, problem) {
+  let w = cardEl.querySelector('.walkthrough');
+  if (w) w.remove();
+  w = document.createElement('div');
+  w.className = 'walkthrough';
+  const steps = buildWalkthrough(topic, problem);
+  w.innerHTML = '<h4>Step-by-step</h4>';
+  steps.forEach((s, i) => {
+    const d = document.createElement('div');
+    d.className = 'walkthrough-step';
+    d.innerHTML = '<span class="step-num">' + (i + 1) + '</span>' + s;
+    renderMathIn(d);
+    w.appendChild(d);
+  });
+  cardEl.appendChild(w);
+}
+
+function startRedemption(cardEl, topic) {
+  // Mark this attempt as a redemption: increment topic's redemption counter and present a fresh problem
+  topicStat(topic.id).redemptions++;
+  saveState();
+  // Replace card with a fresh problem of the same topic
+  const body = $('#sess-body');
+  body.innerHTML = '';
+  const problem = topic.gen();
+  session.current = { topic, problem, isRedemption: true };
+  session.answered = false;
+  const { card, input, submit } = buildQuestionCard(topic, problem, { label: 'Redemption' });
+  body.appendChild(card);
+  submit.addEventListener('click', () => handleSessionAnswer(input.value, input, card));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleSessionAnswer(input.value, input, card); }
+  });
+  setTimeout(() => input.focus(), 60);
+}
+
+function tickSessionTimer() {
+  if (!session) return;
+  updateSessionMeta();
+  checkMissionComplete();
+}
+
+function updateSessionMeta() {
+  if (!session) return;
+  const elapsed = Math.floor((Date.now() - session.startTime) / 1000);
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+  $('#sess-time').textContent = minutes + 'm' + (seconds < 10 ? '0' : '') + seconds + 's';
+  // Live time display: today's minutes + current session elapsed minutes
+  const liveTime = state.todayMinutes + minutes;
+  $('#stat-time') && ($('#stat-time').textContent = liveTime);
+  $('#sess-correct').textContent = Math.min(30, state.todayCorrect);
+  $('#sess-streak').textContent = session.streak;
+  // Update mission rings live
+  const acc = state.todayAttempts > 0 ? Math.round((state.todayCorrect / state.todayAttempts) * 100) : 0;
+  setRing('time', liveTime, 30, liveTime + 'm');
+  setRing('correct', state.todayCorrect, 30, state.todayCorrect);
+  setRing('accuracy', acc, 100, acc + '%');
+}
+
+function checkMissionComplete() {
+  if (state.todayMinutes >= 30 && state.todayCorrect >= 30 && !(session && session.celebrated)) {
+    if (session) session.celebrated = true;
+    completeMission();
+  }
+}
+
+function completeMission() {
+  // Update streak
+  const today = todayKey();
+  if (state.lastSessionDate !== today) {
+    state.streak++;
+    state.lastSessionDate = today;
+  }
+  saveState();
+  confetti();
+  setTimeout(() => showCelebration(), 400);
+}
+
+function endSession(showDash) {
+  if (session && session.timer) clearInterval(session.timer);
+  // Accumulate session time into today's minutes
+  if (session) {
+    const elapsedMin = Math.floor((Date.now() - session.startTime) / 60000);
+    state.todayMinutes = (state.todayMinutes || 0) + elapsedMin;
+    saveState();
+  }
+  session = null;
+  if (showDash !== false) { showScreen('dashboard'); renderDashboard(); }
+}
+
+/* ---------- Celebration modal ---------- */
+function showCelebration() {
+  $('#cel-time').textContent = state.todayMinutes;
+  $('#cel-correct').textContent = state.todayCorrect;
+  $('#cel-streak').textContent = state.streak;
+  $('#celebration').classList.add('active');
+}
+
+function closeCelebration() {
+  $('#celebration').classList.remove('active');
+  endSession();
+}
+
+/* ---------- init ---------- */
+function init() {
+  // Defer until KaTeX ready
+  function ready() {
+    loadState();
+    spawnBgSymbols();
+    tickParticles();
+    // Wire up static buttons
+    $('#btn-begin').addEventListener('click', () => startPlacement());
+    $('#btn-enter-dash').addEventListener('click', () => { showScreen('dashboard'); renderDashboard(); });
+    $('#btn-retest').addEventListener('click', () => {
+      if (confirm('Start a fresh placement test? Your level will be re-assessed (topic progress is kept).')) {
+        state.hasPlaced = false;
+        saveState();
+        startPlacement();
+      }
+    });
+    $('#btn-reset').addEventListener('click', () => {
+      if (confirm('Reset ALL progress? This wipes your level, streak, and topic stats.')) {
+        resetState();
+        showScreen('splash');
+      }
+    });
+    $('#btn-start-session').addEventListener('click', () => startSession());
+    $('#btn-exit-session').addEventListener('click', () => endSession());
+    $('#btn-cel-close').addEventListener('click', () => closeCelebration());
+    // Routing
+    if (state.hasPlaced) { showScreen('dashboard'); renderDashboard(); }
+    else { showScreen('splash'); }
+  }
+  // Wait for KaTeX
+  if (window.katex) ready();
+  else {
+    let tries = 0;
+    const t = setInterval(() => {
+      tries++;
+      if (window.katex || tries > 80) { clearInterval(t); ready(); }
+    }, 50);
+  }
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+</script>
+</body>
+</html>
